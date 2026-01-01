@@ -1,3 +1,6 @@
+
+'use client';
+
 import Link from "next/link";
 import {
   Bell,
@@ -11,11 +14,17 @@ import {
   Upload,
   Settings,
 } from "lucide-react";
+import { usePathname } from 'next/navigation';
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppLogo } from "../icons";
+import { useUser, useDoc, useMemoFirebase, useFirestore } from "@/firebase";
+import type { User as AppUser } from "@/lib/types";
+import { doc } from "firebase/firestore";
+import { cn } from "@/lib/utils";
+
 
 const navItems = [
   { href: "/dashboard", icon: Home, label: "Overview" },
@@ -32,8 +41,14 @@ const adminNavItems = [
 ]
 
 export function DashboardSidebar() {
-  // In a real app, you'd get the user's role from your auth context
-  const userRole = "student"; 
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const pathname = usePathname();
+
+  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile } = useDoc<AppUser>(userDocRef);
+  
+  const userRole = userProfile?.role; 
 
   return (
     <div className="hidden border-r bg-card md:block">
@@ -46,32 +61,43 @@ export function DashboardSidebar() {
         </div>
         <div className="flex-1">
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-            {navItems.map((item) => (
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
               <Link
                 key={item.label}
                 href={item.disabled ? "#" : item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted ${item.disabled ? "cursor-not-allowed opacity-50" : ""}`}
+                className={cn(
+                    `flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted`,
+                    isActive && 'bg-muted text-primary',
+                    item.disabled ? "cursor-not-allowed opacity-50" : ""
+                )}
               >
                 <item.icon className="h-4 w-4" />
                 {item.label}
               </Link>
-            ))}
+            )})}
 
             {/* Admin Section */}
             {userRole === 'admin' && (
                 <>
                     <div className="my-2 mx-4 border-t" />
                      <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Admin</p>
-                    {adminNavItems.map((item) => (
+                    {adminNavItems.map((item) => {
+                       const isActive = pathname === item.href;
+                       return (
                         <Link
                             key={item.label}
                             href={item.href}
-                            className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted"
+                            className={cn(
+                                "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted",
+                                isActive && 'bg-muted text-primary'
+                            )}
                         >
                             <item.icon className="h-4 w-4" />
                             {item.label}
                         </Link>
-                    ))}
+                    )})}
                 </>
             )}
 
@@ -96,5 +122,3 @@ export function DashboardSidebar() {
     </div>
   );
 }
-
-    

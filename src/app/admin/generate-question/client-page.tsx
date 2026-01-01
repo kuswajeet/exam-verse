@@ -120,7 +120,7 @@ export function GenerateQuestionClientPage() {
           <Card>
             <CardHeader>
               <CardTitle>Generated Question</CardTitle>
-              <Badge variant="secondary" className="w-fit">{state.data.difficulty}</Badge>
+              <Badge variant="secondary" className="w-fit">Easy</Badge>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="font-semibold">{state.data.questionText}</p>

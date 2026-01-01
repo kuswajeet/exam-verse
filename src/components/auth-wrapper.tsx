@@ -3,9 +3,10 @@
 import { useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { doc, getFirestore } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import type { User as AppUser } from '@/lib/types';
 import { Skeleton } from './ui/skeleton';
+import { useFirestore } from '@/firebase';
 
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -13,8 +14,8 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isCheckingRole, setIsCheckingRole] = useState(true);
 
-  const db = getFirestore();
-  const userDocRef = useMemoFirebase(() => user ? doc(db, 'users', user.uid) : null, [db, user]);
+  const firestore = useFirestore();
+  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userDocRef);
 
   useEffect(() => {
@@ -64,10 +65,10 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
         } else {
             setIsCheckingRole(false);
         }
-    } else {
-      // For any other case (e.g., user is null on a non-protected page), stop checking.
-      setIsCheckingRole(false);
+    } else if (!user && isAuthPage) {
+        setIsCheckingRole(false);
     }
+
 
   }, [user, userProfile, isUserLoading, isProfileLoading, router, pathname]);
 

@@ -12,16 +12,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useUser, useDoc, useMemoFirebase } from "@/firebase";
-import { doc, getFirestore } from "firebase/firestore";
+import { useUser, useDoc, useMemoFirebase, useFirestore } from "@/firebase";
+import { doc, updateDoc } from "firebase/firestore";
 import type { User as AppUser } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SettingsPage() {
   const { user, isUserLoading } = useUser();
-  const db = getFirestore();
-  const userDocRef = useMemoFirebase(() => user ? doc(db, 'users', user.uid) : null, [db, user]);
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  
+  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userDocRef);
 
   const getInitials = (name?: string) => {
@@ -31,6 +34,25 @@ export default function SettingsPage() {
       return `${names[0][0]}${names[names.length - 1][0]}`;
     }
     return name.substring(0, 2);
+  }
+  
+  const makeAdmin = async () => {
+    if (!userDocRef) return;
+    try {
+        await updateDoc(userDocRef, { role: 'admin' });
+        toast({
+            title: "Success!",
+            description: "You are now an admin. You may need to refresh the page.",
+            className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+        });
+    } catch (error) {
+        console.error("Error updating role:", error);
+        toast({
+            title: "Error",
+            description: "Could not update your role.",
+            variant: "destructive"
+        })
+    }
   }
 
   const isLoading = isUserLoading || isProfileLoading;
@@ -134,7 +156,18 @@ export default function SettingsPage() {
           <Button disabled>Change Password</Button>
         </CardFooter>
       </Card>
+      
+      {userProfile?.role !== 'admin' && (
+        <Card>
+            <CardHeader>
+                <CardTitle>Developer Tools</CardTitle>
+                <CardDescription>Actions for testing purposes.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button onClick={makeAdmin} variant="destructive">Developer: Make Me Admin</Button>
+            </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
-    

@@ -1,7 +1,7 @@
 "use server";
 
-import { collection, writeBatch, doc, getFirestore } from "firebase/firestore";
-import { getSdks } from "@/firebase";
+import { collection, writeBatch, doc } from "firebase/firestore";
+import { getSdks } from "@/firebase/server";
 import type { Question } from "@/lib/types";
 import Papa from "papaparse";
 
