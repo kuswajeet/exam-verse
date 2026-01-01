@@ -1,5 +1,7 @@
 "use server";
 
+import { collection, writeBatch, doc, getFirestore } from "firebase/firestore";
+import { getSdks } from "@/firebase";
 import type { Question } from "@/lib/types";
 import Papa from "papaparse";
 
@@ -23,6 +25,10 @@ export async function uploadQuestionsAction(
   formData: FormData
 ): Promise<FormState> {
   const file = formData.get("csvFile") as File;
+  const examName = formData.get("examName") as string;
+  const subject = formData.get("subject") as string;
+  const category = formData.get("category") as string;
+  const subTopic = formData.get("subTopic") as string;
 
   if (!file || file.size === 0) {
     return { status: "error", data: null, message: "No file selected." };
@@ -30,6 +36,10 @@ export async function uploadQuestionsAction(
 
   if (file.type !== "text/csv") {
     return { status: "error", data: null, message: "Invalid file type. Please upload a CSV." };
+  }
+
+  if (!examName || !subject || !category) {
+    return { status: "error", data: null, message: "Please select an exam, subject, and category." };
   }
 
   const csvText = await file.text();
@@ -60,29 +70,45 @@ export async function uploadQuestionsAction(
         if (correctAnswerIndex === -1) {
             throw new Error(`Invalid CorrectAnswer value at row ${index + 2}: ${row.CorrectAnswer}. Must be A, B, C, or D.`);
         }
+        
+        const questionId = `csv-${Date.now()}-${index}`;
 
         return {
-            id: `csv-${Date.now()}-${index}`,
+            id: questionId,
             questionText: row.Question,
             options: [row.OptionA, row.OptionB, row.OptionC, row.OptionD],
             correctAnswerIndex: correctAnswerIndex,
             explanation: row.Explanation,
+            category: category,
+            examName: examName,
+            subject: subject,
             topic: row.Topic,
+            subTopic: subTopic,
             difficulty: difficulty,
+            questionType: 'single_choice'
         };
     });
 
-    // In a real app, you would save these questions to the database.
-    console.log("Parsed Questions:", questions);
+    const { firestore } = getSdks();
+    const batch = writeBatch(firestore);
+    const questionsRef = collection(firestore, "questions");
+    
+    questions.forEach((question) => {
+      const docRef = doc(questionsRef, question.id);
+      batch.set(docRef, question);
+    });
+
+    await batch.commit();
+
 
     return {
       status: "success",
       data: questions,
-      message: `Successfully parsed ${questions.length} questions from the CSV.`,
+      message: `Successfully saved ${questions.length} questions to Firestore.`,
     };
   } catch (error) {
     console.error(error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during parsing.";
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during parsing or saving.";
     return {
       status: "error",
       data: null,

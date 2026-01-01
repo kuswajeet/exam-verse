@@ -12,8 +12,13 @@ export interface Question {
   options: string[];
   correctAnswerIndex: number;
   explanation: string;
+  category: string;
+  examName: string;
+  subject: string;
   topic: string;
+  subTopic?: string;
   difficulty: 'easy' | 'medium' | 'hard';
+  questionType: 'single_choice' | 'one_liner';
 }
 
 export interface Test {

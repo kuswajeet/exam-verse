@@ -14,9 +14,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { uploadQuestionsAction, FormState } from "./actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle, FileUp, List, Loader, Terminal, XCircle } from "lucide-react";
+import { CheckCircle, FileUp, List, Loader, Save, Terminal, Upload, XCircle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const initialState: FormState = {
   status: "idle",
@@ -35,8 +36,8 @@ function SubmitButton() {
         </>
       ) : (
         <>
-          <FileUp className="mr-2 h-4 w-4" />
-          Upload and Parse CSV
+          <Upload className="mr-2 h-4 w-4" />
+          Upload and Save to Firestore
         </>
       )}
     </Button>
@@ -57,6 +58,52 @@ export function UploadQuestionsClientPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select name="category" required>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="engineering">Engineering</SelectItem>
+                        <SelectItem value="medical">Medical</SelectItem>
+                        <SelectItem value="general">General</SelectItem>
+                    </SelectContent>
+                </Select>
+              </div>
+               <div className="space-y-2">
+                <Label htmlFor="examName">Exam Name</Label>
+                <Select name="examName" required>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select Exam" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="jee-main">JEE Main</SelectItem>
+                        <SelectItem value="neet">NEET</SelectItem>
+                        <SelectItem value="gate">GATE</SelectItem>
+                    </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="subject">Subject</Label>
+                <Select name="subject" required>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select Subject" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="physics">Physics</SelectItem>
+                        <SelectItem value="chemistry">Chemistry</SelectItem>
+                        <SelectItem value="maths">Maths</SelectItem>
+                        <SelectItem value="biology">Biology</SelectItem>
+                    </SelectContent>
+                </Select>
+              </div>
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="subTopic">Sub-Topic (Optional)</Label>
+              <Input id="subTopic" name="subTopic" placeholder="e.g., Kinematics" />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="csvFile">CSV File</Label>
               <Input

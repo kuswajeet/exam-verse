@@ -5,6 +5,7 @@ import {
   Search,
   FlaskConical,
   Upload,
+  Users,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,13 @@ export function DashboardHeader() {
               className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
             >
               Results
+            </Link>
+             <Link
+              href="/admin/manage-users"
+              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+            >
+              <Users className="h-5 w-5" />
+              Manage Users
             </Link>
              <Link
               href="/admin/generate-question"
