@@ -1,17 +1,16 @@
 /**
  * Core Philosophy: This ruleset implements a Role-Based Access Control (RBAC) system combined with a user-ownership model.
- * There are two primary roles: 'student' (default) and 'admin'. Administrator privileges are granted by the existence
- * of a document in the `/roles_admin` collection, providing a fast and secure way to check for elevated permissions.
+ * There are two primary roles: 'student' (default) and 'admin'. Administrator privileges are granted by checking a 'role' field
+ * within the user's own document in the `/users` collection.
  *
  * Data Structure:
  * - /users/{userId}: Stores private user profile data. Each document is strictly owned by the corresponding user but can also be managed by administrators.
  * - /users/{userId}/results/{resultId}: Stores test results for a specific user. This data is private and only accessible by the owner.
  * - /questions/{questionId}: A global collection of all questions. This data is managed exclusively by administrators, but is readable by any authenticated user (e.g., students taking a test).
  * - /tests/{testId}: A global collection of test configurations. Managed by admins, but readable by any authenticated user.
- * - /roles_admin/{userId}: A private, server-managed collection used as a lookup table to identify administrators. Client-side access is completely denied to prevent enumeration of admins.
  *
  * Key Security Decisions:
- * - Admin Role Management: The `/roles_admin` collection is not writable by any client. Adding or removing administrators must be done through a trusted server environment (like the Firebase Console or Cloud Functions) to ensure maximum security.
+ * - Admin Role Management: The user's role is stored on their profile document. While the UI allows self-promotion for development, in production this field should only be editable by other admins or trusted server processes.
  * - User Data Privacy: User data in `/users/{userId}` and their results in subcollections are protected. A user can only access their own documents. Administrators are granted read access for management purposes but cannot write to prevent accidental data corruption. Listing users is explicitly disabled to prevent data leakage.
  * - Content Management: All question and test content is managed by administrators, ensuring data integrity. Any authenticated user can read this data.
  * - Default Posture: The default security posture is to deny access unless explicitly granted. Any operation not covered by an `allow` rule will fail.
@@ -33,10 +32,10 @@ service cloud.firestore {
 
     /**
      * Returns true if the user has an admin role.
-     * Checks for the existence of a document in the roles_admin collection.
+     * Checks for the 'role' field in the user's profile document.
      */
     function isAdmin() {
-      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     /**
@@ -83,10 +82,10 @@ service cloud.firestore {
      */
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if (isOwner(userId) || isAdmin()) && isExistingDoc() && request.resource.data.uid == resource.data.id;
-      allow delete: if (isOwner(userId) || isAdmin()) && isExistingDoc();
+      allow list: if false; // Deny listing users for privacy
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
       
       /**
        * @description A user's test results are private to them.
@@ -99,7 +98,7 @@ service cloud.firestore {
     }
 
     /**
-     * @description A private collection to grant admin roles. Not accessible by clients.
+     * @description A private collection to grant admin roles. Not used in this ruleset, but kept for potential future server-side role management.
      * @path /roles_admin/{userId}
      */
     match /roles_admin/{userId} {
