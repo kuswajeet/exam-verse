@@ -8,6 +8,7 @@ import {
   BookCopy,
   GraduationCap,
   FlaskConical,
+  Upload,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,8 @@ const navItems = [
   { href: "/dashboard/tests", icon: BookCopy, label: "Tests" },
   { href: "/dashboard/results", icon: GraduationCap, label: "Results", badge: "3" },
   { href: "/dashboard/analytics", icon: LineChart, label: "Analytics" },
-  { href: "/admin/generate-question", icon: FlaskConical, label: "Admin Tools" },
+  { href: "/admin/generate-question", icon: FlaskConical, label: "AI Generator" },
+  { href: "/admin/upload-questions", icon: Upload, label: "Bulk Upload" },
 ];
 
 export function DashboardSidebar() {

@@ -3,6 +3,8 @@ import {
   CircleUser,
   Menu,
   Search,
+  FlaskConical,
+  Upload,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -63,6 +65,20 @@ export function DashboardHeader() {
               className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
             >
               Results
+            </Link>
+             <Link
+              href="/admin/generate-question"
+              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+            >
+              <FlaskConical className="h-5 w-5" />
+              AI Generator
+            </Link>
+            <Link
+              href="/admin/upload-questions"
+              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+            >
+              <Upload className="h-5 w-5" />
+              Bulk Upload
             </Link>
           </nav>
           <div className="mt-auto">
