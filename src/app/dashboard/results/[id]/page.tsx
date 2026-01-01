@@ -1,18 +1,65 @@
-import { mockTestAttempts, mockTests } from "@/lib/placeholder-data";
-import { notFound } from "next/navigation";
+'use client';
+
+import { notFound, useRouter } from "next/navigation";
+import { mockTests } from "@/lib/placeholder-data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
+import type { TestAttempt } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
 
 export default function ResultDetailPage({ params }: { params: { id: string } }) {
-  const attempt = mockTestAttempts.find(a => a.id === params.id);
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const resultDocRef = useMemoFirebase(
+    () => (user && firestore ? doc(firestore, `users/${user.uid}/results`, params.id) : null),
+    [user, firestore, params.id]
+  );
+  
+  const { data: attempt, isLoading: isLoadingAttempt } = useDoc<TestAttempt>(resultDocRef);
+
+  if (isLoadingAttempt) {
+    return (
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <Skeleton className="h-8 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                </CardHeader>
+                <CardContent className="grid gap-6 md:grid-cols-3">
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <Skeleton className="h-8 w-1/2" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                </CardContent>
+            </Card>
+        </div>
+    );
+  }
 
   if (!attempt) {
-    notFound();
+    // This could be a brief state before loading, or the doc doesn't exist
+    // You might want a more specific "Not Found" message if loading is complete and still no data
+    return <p>Result not found.</p>;
   }
   
+  // For now, we still get the questions from mock data.
+  // In a real app, questions would be fetched from Firestore based on testId.
   const test = mockTests.find(t => t.id === attempt.testId);
 
   if (!test) {
@@ -26,14 +73,14 @@ export default function ResultDetailPage({ params }: { params: { id: string } })
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Results for: {attempt.testTitle}</CardTitle>
-          <CardDescription>Completed on {attempt.completedAt.toLocaleDateString()}</CardDescription>
+          <CardDescription>Completed on {format(new Date(attempt.completedAt.seconds * 1000), "PPP")}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6 md:grid-cols-3">
           <div className="flex flex-col items-center justify-center space-y-2 p-4 rounded-lg bg-muted">
             <span className="text-sm font-medium text-muted-foreground">Score</span>
             <span className="text-4xl font-bold">{attempt.score}/{attempt.totalQuestions}</span>
           </div>
-          <div className="flex flex-col items-center justify-center space-y-2 p-4 rounded-lg bg-muted">
+          <div className="flex flex-col justify-center space-y-2 p-4 rounded-lg bg-muted">
             <span className="text-sm font-medium text-muted-foreground">Accuracy</span>
             <div className="w-full space-y-2">
                 <span className="text-4xl font-bold">{accuracy.toFixed(1)}%</span>
@@ -65,19 +112,21 @@ export default function ResultDetailPage({ params }: { params: { id: string } })
                                     <span className="flex-grow">{index + 1}. {question.questionText}</span>
                                 </div>
                             </AccordionTrigger>
-                            <AccordionContent className="space-y-4">
+                            <AccordionContent className="space-y-4 pt-4">
                                <div className="grid gap-2">
                                     {question.options.map((option, optionIndex) => {
                                         const isUserAnswer = optionIndex === userAnswerIndex;
                                         const isCorrectAnswer = optionIndex === question.correctAnswerIndex;
                                         return (
-                                            <div key={optionIndex} className={cn("flex items-center gap-2 p-2 rounded-md text-sm", 
-                                                isCorrectAnswer && "bg-green-100 dark:bg-green-900/50",
-                                                isUserAnswer && !isCorrectAnswer && "bg-red-100 dark:bg-red-900/50"
+                                            <div key={optionIndex} className={cn("flex items-center gap-3 p-3 rounded-lg text-sm", 
+                                                isCorrectAnswer && "bg-green-100 dark:bg-green-900/50 border border-green-200 dark:border-green-800",
+                                                isUserAnswer && !isCorrectAnswer && "bg-red-100 dark:bg-red-900/50 border border-red-200 dark:border-red-800",
+                                                !isCorrectAnswer && !isUserAnswer && "border"
                                             )}>
-                                                {isCorrectAnswer && <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />}
-                                                {isUserAnswer && !isCorrectAnswer && <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />}
-                                                {!isCorrectAnswer && !isUserAnswer && <div className="h-4 w-4" />}
+                                                {isCorrectAnswer ? <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" /> 
+                                                : isUserAnswer ? <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                                                : <div className="h-5 w-5" />
+                                                }
                                                 <span>{option}</span>
                                             </div>
                                         );
@@ -87,7 +136,7 @@ export default function ResultDetailPage({ params }: { params: { id: string } })
                                     <AlertCircle className="h-5 w-5 text-blue-500 flex-shrink-0 mt-1" />
                                     <div>
                                         <h4 className="font-semibold text-blue-800 dark:text-blue-300">Explanation</h4>
-                                        <p className="text-muted-foreground text-blue-700 dark:text-blue-400">{question.explanation}</p>
+                                        <p className="text-muted-foreground text-sm text-blue-700 dark:text-blue-400">{question.explanation}</p>
                                     </div>
                                 </div>
                             </AccordionContent>

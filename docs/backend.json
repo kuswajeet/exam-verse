@@ -68,7 +68,6 @@
         "examName",
         "subject",
         "topic",
-        "subTopic",
         "difficulty",
         "questionType"
       ]
@@ -87,6 +86,10 @@
           "type": "string",
           "description": "The title of the test."
         },
+        "subject": {
+          "type": "string",
+          "description": "The subject of the test."
+        },
         "isFree": {
           "type": "boolean",
           "description": "Indicates whether the test is free or requires payment."
@@ -102,20 +105,65 @@
         "totalMarks": {
           "type": "number",
           "description": "The total marks for the test."
-        },
-        "hierarchy": {
-          "type": "string",
-          "description": "References to Category, Exam and Subject. (Relationship: Category 1:N Test, Exam 1:N Test, Subject 1:N Test)"
         }
       },
       "required": [
         "id",
         "title",
+        "subject",
         "isFree",
         "price",
         "durationMinutes",
-        "totalMarks",
-        "hierarchy"
+        "totalMarks"
+      ]
+    },
+    "TestAttempt": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Test Attempt",
+      "type": "object",
+      "description": "Represents a student's attempt at a test.",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who took the test."
+        },
+        "testId": {
+          "type": "string",
+          "description": "The ID of the test that was taken."
+        },
+        "testTitle": {
+          "type": "string",
+          "description": "The title of the test at the time of taking."
+        },
+        "answers": {
+          "type": "object",
+          "description": "A map of question IDs to the index of the selected answer.",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "score": {
+          "type": "number",
+          "description": "The total number of correct answers."
+        },
+        "totalQuestions": {
+          "type": "number",
+          "description": "The total number of questions in the test."
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the test was completed."
+        }
+      },
+      "required": [
+        "userId",
+        "testId",
+        "testTitle",
+        "answers",
+        "score",
+        "totalQuestions",
+        "completedAt"
       ]
     },
     "User": {
@@ -159,10 +207,7 @@
       "required": [
         "uid",
         "email",
-        "role",
-        "enrolledExams",
-        "purchasedTests",
-        "mobileNumber"
+        "role"
       ]
     }
   },
@@ -191,6 +236,22 @@
         }
       },
       {
+        "path": "/tests/{testId}",
+        "definition": {
+          "entityName": "Test",
+          "schema": {
+            "$ref": "#/backend/entities/Test"
+          },
+          "description": "Stores the main test configurations.",
+          "params": [
+            {
+              "name": "testId",
+              "description": "Unique identifier for the test."
+            }
+          ]
+        }
+      },
+      {
         "path": "/users/{userId}",
         "definition": {
           "entityName": "User",
@@ -202,6 +263,26 @@
             {
               "name": "userId",
               "description": "Unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/results/{resultId}",
+        "definition": {
+          "entityName": "TestAttempt",
+          "schema": {
+            "$ref": "#/backend/entities/TestAttempt"
+          },
+          "description": "Stores the results of each test attempt for a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The user's ID."
+            },
+            {
+              "name": "resultId",
+              "description": "The unique ID for the test result."
             }
           ]
         }

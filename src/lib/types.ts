@@ -1,3 +1,5 @@
+import { Timestamp } from "firebase/firestore";
+
 export interface User {
   uid: string;
   email: string;
@@ -43,5 +45,5 @@ export interface TestAttempt {
   answers: { [questionId: string]: number };
   score: number;
   totalQuestions: number;
-  completedAt: Date;
+  completedAt: Timestamp;
 }

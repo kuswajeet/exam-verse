@@ -1,3 +1,5 @@
+'use client';
+
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,9 +18,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { mockTestAttempts } from "@/lib/placeholder-data";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
+import type { TestAttempt } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
 
 export default function ResultsPage() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const resultsQuery = useMemoFirebase(
+    () => (user && firestore ? collection(firestore, `users/${user.uid}/results`) : null),
+    [user, firestore]
+  );
+  
+  const { data: attempts, isLoading: isLoadingAttempts } = useCollection<TestAttempt>(resultsQuery);
+
   return (
     <Card>
       <CardHeader>
@@ -41,23 +57,40 @@ export default function ResultsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockTestAttempts.map((attempt) => (
-              <TableRow key={attempt.id}>
-                <TableCell className="font-medium">{attempt.testTitle}</TableCell>
-                <TableCell>{attempt.score}/{attempt.totalQuestions}</TableCell>
-                <TableCell>
-                  <Badge variant={attempt.score / attempt.totalQuestions > 0.8 ? "default" : "secondary"} className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                    {((attempt.score / attempt.totalQuestions) * 100).toFixed(0)}%
-                  </Badge>
-                </TableCell>
-                <TableCell>{attempt.completedAt.toLocaleDateString()}</TableCell>
-                <TableCell className="text-right">
-                  <Button asChild variant="outline">
-                    <Link href={`/dashboard/results/${attempt.id}`}>View Details</Link>
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            {isLoadingAttempts ? (
+                 Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-32" /></TableCell>
+                    </TableRow>
+              ))) : attempts && attempts.length > 0 ? (
+              attempts.map((attempt) => (
+                <TableRow key={attempt.id}>
+                  <TableCell className="font-medium">{attempt.testTitle}</TableCell>
+                  <TableCell>{attempt.score}/{attempt.totalQuestions}</TableCell>
+                  <TableCell>
+                    <Badge variant={attempt.score / attempt.totalQuestions > 0.8 ? "default" : "secondary"}>
+                      {((attempt.score / attempt.totalQuestions) * 100).toFixed(0)}%
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{format(new Date(attempt.completedAt.seconds * 1000), "PP")}</TableCell>
+                  <TableCell className="text-right">
+                    <Button asChild variant="outline">
+                      <Link href={`/dashboard/results/${attempt.id}`}>View Details</Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+                <TableRow>
+                    <TableCell colSpan={5} className="text-center h-24">
+                        You haven't completed any tests yet.
+                    </TableCell>
+                </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>

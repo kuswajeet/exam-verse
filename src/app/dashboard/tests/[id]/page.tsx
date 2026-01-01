@@ -9,19 +9,25 @@ import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, ArrowRight, Check, Clock } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useUser, useFirestore, useDoc, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
+import type { Test, TestAttempt } from '@/lib/types';
+import { doc, collection } from 'firebase/firestore';
 
 export default function TestTakerPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const [test, setTest] = useState(() => mockTests.find(t => t.id === params.id));
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  // For now, we will use mock data for the test itself, but save results to firestore
+  const [test] = useState(() => mockTests.find(t => t.id === params.id));
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<string, number>>({});
   const [timeLeft, setTimeLeft] = useState(test ? test.durationMinutes * 60 : 0);
-  const [testFinished, setTestFinished] = useState(false);
-
+  
   useEffect(() => {
-    if (!test) {
+    if (!test || timeLeft <= 0) {
       return;
     }
     const timer = setInterval(() => {
@@ -36,26 +42,45 @@ export default function TestTakerPage({ params }: { params: { id: string } }) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [test]);
+  }, [test, timeLeft]);
 
   if (!test) {
     notFound();
   }
 
   const currentQuestion = test.questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / test.questions.length) * 100;
+  const progress = ((currentQuestionIndex) / test.questions.length) * 100;
 
   const handleAnswerSelect = (questionId: string, optionIndex: number) => {
     setUserAnswers(prev => ({ ...prev, [questionId]: optionIndex }));
   };
   
   const finishTest = () => {
-    setTestFinished(true);
-    // In a real app, you'd save the results here and navigate to the results page
-    // For now, we just show a confirmation.
-    const newAttemptId = `attempt${Date.now()}`;
-    router.push(`/dashboard/results/${newAttemptId}`);
-    // This is a mock. A real app would have the result ready.
+    if (!user || !firestore) return;
+
+    const score = Object.keys(userAnswers).reduce((acc, qId) => {
+      const question = test.questions.find(q => q.id === qId);
+      if (question && question.correctAnswerIndex === userAnswers[qId]) {
+        return acc + 1;
+      }
+      return acc;
+    }, 0);
+    
+    const attemptId = `attempt-${user.uid}-${test.id}-${Date.now()}`;
+    const resultsCollection = collection(firestore, 'users', user.uid, 'results');
+    
+    const attemptData: Omit<TestAttempt, 'id'> = {
+      userId: user.uid,
+      testId: test.id,
+      testTitle: test.title,
+      answers: userAnswers,
+      score: score,
+      totalQuestions: test.questions.length,
+      completedAt: new Date(),
+    };
+
+    addDocumentNonBlocking(resultsCollection, attemptData);
+    router.push(`/dashboard/results`);
   }
 
   const formatTime = (seconds: number) => {
@@ -123,11 +148,12 @@ export default function TestTakerPage({ params }: { params: { id: string } }) {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Are you sure you want to submit?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            You won't be able to change your answers after submitting.
+                            You won't be able to change your answers after submitting. Your test will be graded.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogAction onClick={finishTest}>Submit</AlertDialogAction>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={finishTest} className="bg-green-600 hover:bg-green-700">Submit</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>

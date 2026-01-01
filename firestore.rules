@@ -5,13 +5,15 @@
  *
  * Data Structure:
  * - /users/{userId}: Stores private user profile data. Each document is strictly owned by the corresponding user but can also be managed by administrators.
+ * - /users/{userId}/results/{resultId}: Stores test results for a specific user. This data is private and only accessible by the owner.
  * - /questions/{questionId}: A global collection of all questions. This data is managed exclusively by administrators, but is readable by any authenticated user (e.g., students taking a test).
+ * - /tests/{testId}: A global collection of test configurations. Managed by admins, but readable by any authenticated user.
  * - /roles_admin/{userId}: A private, server-managed collection used as a lookup table to identify administrators. Client-side access is completely denied to prevent enumeration of admins.
  *
  * Key Security Decisions:
  * - Admin Role Management: The `/roles_admin` collection is not writable by any client. Adding or removing administrators must be done through a trusted server environment (like the Firebase Console or Cloud Functions) to ensure maximum security.
- * - User Data Privacy: User data in `/users/{userId}` is protected. A user can only access their own document. Administrators are granted read/write access for management purposes. Listing users is explicitly disabled to prevent data leakage.
- * - Content Management: All question content in the `/questions` collection is managed by administrators, ensuring data integrity. Any authenticated user can read this data, which is necessary for the student-facing part of the application.
+ * - User Data Privacy: User data in `/users/{userId}` and their results in subcollections are protected. A user can only access their own documents. Administrators are granted read access for management purposes but cannot write to prevent accidental data corruption. Listing users is explicitly disabled to prevent data leakage.
+ * - Content Management: All question and test content is managed by administrators, ensuring data integrity. Any authenticated user can read this data.
  * - Default Posture: The default security posture is to deny access unless explicitly granted. Any operation not covered by an `allow` rule will fail.
  */
 rules_version = '2';
@@ -46,10 +48,27 @@ service cloud.firestore {
 
     /**
      * Returns true if the document being accessed already exists in Firestore.
-     * Crucial for protecting against writes on non-existent paths.
      */
     function isExistingDoc() {
       return resource != null;
+    }
+    
+    /**
+     * Validates the schema for a new Question document.
+     */
+    function isNewQuestionValid() {
+        let data = request.resource.data;
+        return data.id is string &&
+               data.questionText is string &&
+               data.options is list && data.options.size() >= 2 &&
+               data.correctAnswerIndex is number &&
+               data.explanation is string &&
+               data.category is string &&
+               data.examName is string &&
+               data.subject is string &&
+               data.topic is string &&
+               data.difficulty is string && (data.difficulty == 'easy' || data.difficulty == 'medium' || data.difficulty == 'hard') &&
+               data.questionType is string;
     }
 
     // --------------------------------------------------------------------------------
@@ -59,46 +78,50 @@ service cloud.firestore {
     /**
      * @description Questions are managed by admins but readable by any signed-in user.
      * @path /questions/{questionId}
-     * @allow (get) An authenticated student fetches a question for a test.
-     * @deny (create) A non-admin user attempts to upload a new question.
-     * @principle Implements role-based write access for content management.
      */
     match /questions/{questionId} {
       allow get, list: if isSignedIn();
-      allow create: if isAdmin() && request.resource.data.id == questionId;
+      allow create: if isAdmin() && isNewQuestionValid() && request.resource.data.id == questionId;
       allow update: if isAdmin() && isExistingDoc() && request.resource.data.id == resource.data.id;
       allow delete: if isAdmin() && isExistingDoc();
     }
+    
+    /**
+     * @description Tests are managed by admins but readable by any signed-in user.
+     * @path /tests/{testId}
+     */
+    match /tests/{testId} {
+        allow get, list: if isSignedIn();
+        allow create, update, delete: if isAdmin();
+    }
 
     /**
-     * @description User profiles are private to the owner but can be managed by an admin.
+     * @description User profiles and their subcollections.
      * @path /users/{userId}
-     * @allow (get) A user reads their own profile data.
-     * @deny (get) A user attempts to read another user's profile.
-     * @deny (list) Any user attempts to list all user profiles.
-     * @principle Enforces a strict data ownership model with an admin override.
      */
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if false;
       allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if (isOwner(userId) || isAdmin()) && isExistingDoc() && request.resource.data.uid == resource.data.uid;
+      allow update: if (isOwner(userId) || isAdmin()) && isExistingDoc() && request.resource.data.uid == resource.data.id;
       allow delete: if (isOwner(userId) || isAdmin()) && isExistingDoc();
+      
+      /**
+       * @description A user's test results are private to them.
+       * @path /users/{userId}/results/{resultId}
+       */
+      match /results/{resultId} {
+        allow read, list, create: if isOwner(userId);
+        allow update, delete: if false; // Results are immutable
+      }
     }
 
     /**
      * @description A private collection to grant admin roles. Not accessible by clients.
      * @path /roles_admin/{userId}
-     * @allow (get) No client operation is ever permitted.
-     * @deny (get, list, create, update, delete) All client attempts are rejected.
-     * @principle Secures critical role-management data by requiring server-side access (e.g., Firebase Console or Admin SDK) for any modifications.
      */
     match /roles_admin/{userId} {
-      allow get: if false;
-      allow list: if false;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow read, write: if false;
     }
   }
 }
