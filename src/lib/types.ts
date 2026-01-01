@@ -41,6 +41,7 @@ export interface Test {
   durationMinutes: number;
   totalMarks: number;
   questionCount?: number;
+  questionIds?: string[];
   isPublished?: boolean;
   createdAt?: Timestamp;
 }

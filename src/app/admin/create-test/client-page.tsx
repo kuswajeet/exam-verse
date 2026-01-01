@@ -10,19 +10,24 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, where } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, CollectionReference, DocumentData } from 'firebase/firestore';
 import type { Question, Test } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader, BookCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 
 const createTestSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
-  category: z.string().min(1, 'Category is required'),
-  examName: z.string().min(1, 'Exam name is required'),
-  subject: z.string().min(1, 'Subject is required'),
+  category: z.string(),
+  examName: z.string(),
+  subject: z.string(),
+  topic: z.string(),
+  subTopic: z.string(),
+  difficulty: z.string(),
   durationMinutes: z.coerce.number().min(1, 'Duration must be at least 1 minute'),
   totalMarks: z.coerce.number().min(1, 'Total marks must be at least 1'),
   isFree: z.boolean().default(true),
@@ -36,11 +41,15 @@ export function CreateTestClientPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(new Set());
 
   const [uniqueValues, setUniqueValues] = useState({
     categories: [] as string[],
     examNames: [] as string[],
     subjects: [] as string[],
+    topics: [] as string[],
+    subTopics: [] as string[],
+    difficulties: ['easy', 'medium', 'hard'],
   });
 
   const form = useForm<CreateTestForm>({
@@ -50,6 +59,9 @@ export function CreateTestClientPage() {
       category: '',
       examName: '',
       subject: '',
+      topic: '',
+      subTopic: '',
+      difficulty: '',
       durationMinutes: 60,
       totalMarks: 100,
       isFree: true,
@@ -57,53 +69,94 @@ export function CreateTestClientPage() {
     },
   });
 
-  const { category, examName, subject } = form.watch();
+  const formValues = form.watch();
 
-  // 1. Fetch all questions to extract unique values
+  // Fetch all questions to extract unique values for datalists
   const allQuestionsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'questions') : null, [firestore]);
   const { data: allQuestions } = useCollection<Question>(allQuestionsQuery);
 
-  // 2. Extract unique values once questions are loaded
   useEffect(() => {
     if (allQuestions) {
       const categories = new Set<string>();
       const examNames = new Set<string>();
       const subjects = new Set<string>();
+      const topics = new Set<string>();
+      const subTopics = new Set<string>();
+
       allQuestions.forEach(q => {
         if (q.category) categories.add(q.category);
         if (q.examName) examNames.add(q.examName);
         if (q.subject) subjects.add(q.subject);
+        if (q.topic) topics.add(q.topic);
+        if (q.subTopic) subTopics.add(q.subTopic);
       });
-      setUniqueValues({
+
+      setUniqueValues(prev => ({
+        ...prev,
         categories: Array.from(categories),
         examNames: Array.from(examNames),
         subjects: Array.from(subjects),
-      });
+        topics: Array.from(topics),
+        subTopics: Array.from(subTopics),
+      }));
     }
   }, [allQuestions]);
 
-
-  // 3. Query for available questions based on form input
+  // Query for available questions based on form filters
   const questionsQuery = useMemoFirebase(() => {
-    if (!firestore || !category || !examName || !subject) return null;
-    return query(
-      collection(firestore, 'questions'),
-      where('category', '==', category),
-      where('examName', '==', examName),
-      where('subject', '==', subject)
-    );
-  }, [firestore, category, examName, subject]);
+    if (!firestore) return null;
+    let q: CollectionReference | Query = collection(firestore, 'questions');
+    if (formValues.category) q = query(q, where('category', '==', formValues.category));
+    if (formValues.examName) q = query(q, where('examName', '==', formValues.examName));
+    if (formValues.subject) q = query(q, where('subject', '==', formValues.subject));
+    if (formValues.topic) q = query(q, where('topic', '==', formValues.topic));
+    if (formValues.subTopic) q = query(q, where('subTopic', '==', formValues.subTopic));
+    if (formValues.difficulty) q = query(q, where('difficulty', '==', formValues.difficulty));
+    return q as Query<DocumentData>;
+  }, [firestore, formValues.category, formValues.examName, formValues.subject, formValues.topic, formValues.subTopic, formValues.difficulty]);
 
   const { data: availableQuestions, isLoading: isLoadingQuestions } = useCollection<Question>(questionsQuery);
   const questionCount = availableQuestions?.length ?? 0;
 
+  // Sync selected IDs with available questions
+  useEffect(() => {
+    if (availableQuestions) {
+      const availableIds = new Set(availableQuestions.map(q => q.id));
+      setSelectedQuestionIds(availableIds);
+    } else {
+      setSelectedQuestionIds(new Set());
+    }
+  }, [availableQuestions]);
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked && availableQuestions) {
+      setSelectedQuestionIds(new Set(availableQuestions.map(q => q.id)));
+    } else {
+      setSelectedQuestionIds(new Set());
+    }
+  };
+
+  const handleSelectQuestion = (id: string, checked: boolean) => {
+    setSelectedQuestionIds(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(id);
+      } else {
+        newSet.delete(id);
+      }
+      return newSet;
+    });
+  };
+
   async function onSubmit(values: CreateTestForm) {
     setIsSubmitting(true);
-    if (questionCount === 0) {
+    const finalQuestionIds = Array.from(selectedQuestionIds);
+
+    if (finalQuestionIds.length === 0) {
       toast({
         variant: 'destructive',
-        title: 'No Questions Available',
-        description: 'Cannot create a test with zero questions. Please adjust filters or upload questions.',
+        title: 'No Questions Selected',
+        description: 'Cannot create a test with zero questions. Please select at least one question.',
       });
       setIsSubmitting(false);
       return;
@@ -111,18 +164,26 @@ export function CreateTestClientPage() {
 
     try {
       const testCollection = collection(firestore, 'tests');
-      const testData: Omit<Test, 'id' | 'createdAt'> & { createdAt: any, questionCount: number } = {
-        ...values,
+      const testData: Partial<Test> & { createdAt: any } = {
+        title: values.title,
+        category: values.category,
+        examName: values.examName,
+        subject: values.subject,
+        durationMinutes: values.durationMinutes,
+        totalMarks: values.totalMarks,
+        isFree: values.isFree,
         price: values.isFree ? 0 : values.price || 0,
+        questionIds: finalQuestionIds,
+        questionCount: finalQuestionIds.length,
+        isPublished: true,
         createdAt: serverTimestamp(),
-        questionCount: questionCount,
       };
 
       await addDoc(testCollection, testData);
 
       toast({
         title: 'Test Created Successfully!',
-        description: `"${values.title}" has been created.`,
+        description: `"${values.title}" has been created with ${finalQuestionIds.length} questions.`,
         className: 'bg-green-100 dark:bg-green-900',
       });
 
@@ -138,6 +199,26 @@ export function CreateTestClientPage() {
       setIsSubmitting(false);
     }
   }
+
+  const renderFilterInput = (name: keyof CreateTestForm, label: string, listId: string, options: string[]) => (
+    <FormField
+      control={form.control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <FormControl>
+            <Input placeholder="Select or type new..." {...field} list={listId} />
+          </FormControl>
+          <datalist id={listId}>
+            {options.map(opt => <option key={opt} value={opt} />)}
+          </datalist>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+
 
   return (
     <Card>
@@ -159,103 +240,21 @@ export function CreateTestClientPage() {
             />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Select or type new..." {...field} list="category-list" />
-                    </FormControl>
-                     <datalist id="category-list">
-                      {uniqueValues.categories.map(cat => <option key={cat} value={cat} />)}
-                    </datalist>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="examName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Exam</FormLabel>
-                     <FormControl>
-                      <Input placeholder="Select or type new..." {...field} list="exam-list"/>
-                    </FormControl>
-                     <datalist id="exam-list">
-                      {uniqueValues.examNames.map(exam => <option key={exam} value={exam} />)}
-                    </datalist>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="subject"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Subject</FormLabel>
-                     <FormControl>
-                      <Input placeholder="Select or type new..." {...field} list="subject-list" />
-                    </FormControl>
-                    <datalist id="subject-list">
-                      {uniqueValues.subjects.map(sub => <option key={sub} value={sub} />)}
-                    </datalist>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {renderFilterInput('category', 'Category', 'category-list', uniqueValues.categories)}
+              {renderFilterInput('examName', 'Exam', 'exam-list', uniqueValues.examNames)}
+              {renderFilterInput('subject', 'Subject', 'subject-list', uniqueValues.subjects)}
             </div>
-             <FormDescription>
-                Type the exact Category, Exam, and Subject (case-sensitive) or select from existing values.
-            </FormDescription>
 
-
-            {subject && (
-              <div className="flex items-center justify-center p-3 bg-muted rounded-lg">
-                {isLoadingQuestions ? (
-                  <Loader className="h-5 w-5 animate-spin" />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <BookCheck className="h-5 w-5 text-primary" />
-                    <span className="font-medium">Available Questions:</span>
-                    <Badge variant={questionCount > 0 ? "default" : "destructive"}>{questionCount}</Badge>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="durationMinutes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Duration (minutes)</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="totalMarks"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Total Marks</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {renderFilterInput('topic', 'Topic', 'topic-list', uniqueValues.topics)}
+              {renderFilterInput('subTopic', 'Sub-Topic', 'subtopic-list', uniqueValues.subTopics)}
+              {renderFilterInput('difficulty', 'Difficulty', 'difficulty-list', uniqueValues.difficulties)}
             </div>
             
+            <FormDescription>
+              Filter questions by typing exact values (case-sensitive) or selecting from existing options. Leave fields blank to ignore them.
+            </FormDescription>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                  <FormField
                     control={form.control}
@@ -294,6 +293,91 @@ export function CreateTestClientPage() {
                 )}
             </div>
 
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="durationMinutes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Duration (minutes)</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="totalMarks"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Total Marks</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <div className="space-y-4">
+                <h3 className="text-lg font-medium">Available Questions ({selectedQuestionIds.size} / {questionCount} selected)</h3>
+                <div className="border rounded-lg max-h-[400px] overflow-y-auto">
+                    <Table>
+                        <TableHeader className="sticky top-0 bg-card">
+                            <TableRow>
+                                <TableHead className="w-[50px]">
+                                    <Checkbox 
+                                        checked={questionCount > 0 && selectedQuestionIds.size === questionCount}
+                                        onCheckedChange={handleSelectAll}
+                                        aria-label="Select all"
+                                    />
+                                </TableHead>
+                                <TableHead>Question Text</TableHead>
+                                <TableHead>Topic</TableHead>
+                                <TableHead>Sub-Topic</TableHead>
+                                <TableHead>Difficulty</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoadingQuestions ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="h-24 text-center">
+                                        <Loader className="mx-auto h-6 w-6 animate-spin" />
+                                    </TableCell>
+                                </TableRow>
+                            ) : questionCount > 0 ? (
+                                availableQuestions?.map(q => (
+                                    <TableRow key={q.id} data-state={selectedQuestionIds.has(q.id) && "selected"}>
+                                        <TableCell>
+                                            <Checkbox
+                                                checked={selectedQuestionIds.has(q.id)}
+                                                onCheckedChange={(checked) => handleSelectQuestion(q.id, !!checked)}
+                                                aria-label={`Select question ${q.id}`}
+                                            />
+                                        </TableCell>
+                                        <TableCell className="max-w-xs truncate font-medium">{q.questionText}</TableCell>
+                                        <TableCell>{q.topic}</TableCell>
+                                        <TableCell>{q.subTopic || 'N/A'}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={q.difficulty === 'hard' ? 'destructive' : 'secondary'}>{q.difficulty}</Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="h-24 text-center">
+                                        No questions match the current filters.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </div>
+
           </CardContent>
           <CardFooter>
             <Button type="submit" disabled={isSubmitting || isLoadingQuestions}>
@@ -309,5 +393,3 @@ export function CreateTestClientPage() {
     </Card>
   );
 }
-
-    
