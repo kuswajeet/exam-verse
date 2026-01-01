@@ -1,0 +1,228 @@
+{
+  "entities": {
+    "Question": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Question",
+      "type": "object",
+      "description": "Represents a question in a test or exam.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the question."
+        },
+        "questionText": {
+          "type": "string",
+          "description": "The text of the question."
+        },
+        "options": {
+          "type": "array",
+          "description": "A list of possible answer options for the question.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "correctAnswerIndex": {
+          "type": "number",
+          "description": "The index of the correct answer in the options list."
+        },
+        "explanation": {
+          "type": "string",
+          "description": "An explanation of the correct answer."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the question."
+        },
+        "examName": {
+          "type": "string",
+          "description": "The name of the exam the question belongs to."
+        },
+        "subject": {
+          "type": "string",
+          "description": "The subject of the question."
+        },
+        "topic": {
+          "type": "string",
+          "description": "The topic of the question."
+        },
+        "subTopic": {
+          "type": "string",
+          "description": "The subtopic of the question."
+        },
+        "difficulty": {
+          "type": "string",
+          "description": "The difficulty level of the question (easy, medium, hard)."
+        },
+        "questionType": {
+          "type": "string",
+          "description": "The type of question (single_choice, one_liner)."
+        }
+      },
+      "required": [
+        "id",
+        "questionText",
+        "options",
+        "correctAnswerIndex",
+        "explanation",
+        "category",
+        "examName",
+        "subject",
+        "topic",
+        "subTopic",
+        "difficulty",
+        "questionType"
+      ]
+    },
+    "Test": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Test",
+      "type": "object",
+      "description": "Represents a test or exam.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the test."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the test."
+        },
+        "isFree": {
+          "type": "boolean",
+          "description": "Indicates whether the test is free or requires payment."
+        },
+        "price": {
+          "type": "number",
+          "description": "The price of the test."
+        },
+        "durationMinutes": {
+          "type": "number",
+          "description": "The duration of the test in minutes."
+        },
+        "totalMarks": {
+          "type": "number",
+          "description": "The total marks for the test."
+        },
+        "hierarchy": {
+          "type": "string",
+          "description": "References to Category, Exam and Subject. (Relationship: Category 1:N Test, Exam 1:N Test, Subject 1:N Test)"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "isFree",
+        "price",
+        "durationMinutes",
+        "totalMarks",
+        "hierarchy"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the application.",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role (admin or student)."
+        },
+        "enrolledExams": {
+          "type": "array",
+          "description": "A list of exam ids the user is enrolled in.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "purchasedTests": {
+          "type": "array",
+          "description": "A list of test ids the user has purchased.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mobileNumber": {
+          "type": "string",
+          "description": "The user's mobile number."
+        }
+      },
+      "required": [
+        "uid",
+        "email",
+        "role",
+        "enrolledExams",
+        "purchasedTests",
+        "mobileNumber"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/questions/{questionId}",
+        "definition": {
+          "entityName": "Question",
+          "schema": {
+            "$ref": "#/backend/entities/Question"
+          },
+          "description": "Stores question data. Category, examName, and subject are included as properties to support efficient querying and display of questions.",
+          "params": [
+            {
+              "name": "questionId",
+              "description": "Unique identifier for the question."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Accessible only by the user or an administrator.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Marks a user as an administrator. Document existence determines admin privileges.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Unique identifier for the administrator."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the 'Exam Verse Pro' application, focusing on secure and scalable data management for questions, tests, and users. Authorization Independence is achieved through the use of path-based ownership for user data and denormalization of roles. QAPs are supported by segregating admin and user data and utilizing role-based access control.\n\nThe `/users/{userId}` collection stores user profiles, using path-based ownership to ensure only the user or an admin can access their data.  The `/questions/{questionId}` collection stores question data. The question document contains the category, examName, and subject. The `/roles_admin/{userId}` collection grants administrative privileges, checked via document existence.\n\nThis structure facilitates secure `list` operations by ensuring collections contain documents with homogeneous security postures.  Authorization rules can be written without relying on `get()` calls, maintaining Authorization Independence for atomic operations."
+  }
+}

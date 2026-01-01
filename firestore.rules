@@ -1,0 +1,104 @@
+/**
+ * Core Philosophy: This ruleset implements a Role-Based Access Control (RBAC) system combined with a user-ownership model.
+ * There are two primary roles: 'student' (default) and 'admin'. Administrator privileges are granted by the existence
+ * of a document in the `/roles_admin` collection, providing a fast and secure way to check for elevated permissions.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores private user profile data. Each document is strictly owned by the corresponding user but can also be managed by administrators.
+ * - /questions/{questionId}: A global collection of all questions. This data is managed exclusively by administrators, but is readable by any authenticated user (e.g., students taking a test).
+ * - /roles_admin/{userId}: A private, server-managed collection used as a lookup table to identify administrators. Client-side access is completely denied to prevent enumeration of admins.
+ *
+ * Key Security Decisions:
+ * - Admin Role Management: The `/roles_admin` collection is not writable by any client. Adding or removing administrators must be done through a trusted server environment (like the Firebase Console or Cloud Functions) to ensure maximum security.
+ * - User Data Privacy: User data in `/users/{userId}` is protected. A user can only access their own document. Administrators are granted read/write access for management purposes. Listing users is explicitly disabled to prevent data leakage.
+ * - Content Management: All question content in the `/questions` collection is managed by administrators, ensuring data integrity. Any authenticated user can read this data, which is necessary for the student-facing part of the application.
+ * - Default Posture: The default security posture is to deny access unless explicitly granted. Any operation not covered by an `allow` rule will fail.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --------------------------------------------------------------------------------
+    // Helper Functions
+    // --------------------------------------------------------------------------------
+
+    /**
+     * Returns true if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Returns true if the user has an admin role.
+     * Checks for the existence of a document in the roles_admin collection.
+     */
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    /**
+     * Returns true if the currently authenticated user's UID matches the provided userId.
+     */
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    /**
+     * Returns true if the document being accessed already exists in Firestore.
+     * Crucial for protecting against writes on non-existent paths.
+     */
+    function isExistingDoc() {
+      return resource != null;
+    }
+
+    // --------------------------------------------------------------------------------
+    // Collection Rules
+    // --------------------------------------------------------------------------------
+
+    /**
+     * @description Questions are managed by admins but readable by any signed-in user.
+     * @path /questions/{questionId}
+     * @allow (get) An authenticated student fetches a question for a test.
+     * @deny (create) A non-admin user attempts to upload a new question.
+     * @principle Implements role-based write access for content management.
+     */
+    match /questions/{questionId} {
+      allow get, list: if isSignedIn();
+      allow create: if isAdmin() && request.resource.data.id == questionId;
+      allow update: if isAdmin() && isExistingDoc() && request.resource.data.id == resource.data.id;
+      allow delete: if isAdmin() && isExistingDoc();
+    }
+
+    /**
+     * @description User profiles are private to the owner but can be managed by an admin.
+     * @path /users/{userId}
+     * @allow (get) A user reads their own profile data.
+     * @deny (get) A user attempts to read another user's profile.
+     * @deny (list) Any user attempts to list all user profiles.
+     * @principle Enforces a strict data ownership model with an admin override.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if (isOwner(userId) || isAdmin()) && isExistingDoc() && request.resource.data.uid == resource.data.uid;
+      allow delete: if (isOwner(userId) || isAdmin()) && isExistingDoc();
+    }
+
+    /**
+     * @description A private collection to grant admin roles. Not accessible by clients.
+     * @path /roles_admin/{userId}
+     * @allow (get) No client operation is ever permitted.
+     * @deny (get, list, create, update, delete) All client attempts are rejected.
+     * @principle Secures critical role-management data by requiring server-side access (e.g., Firebase Console or Admin SDK) for any modifications.
+     */
+    match /roles_admin/{userId} {
+      allow get: if false;
+      allow list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}
