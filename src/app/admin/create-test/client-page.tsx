@@ -1,24 +1,21 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, where } from 'firebase/firestore';
-import { filterOptions, getExamsForCategory, getSubjectsForExam } from '@/lib/filter-options';
 import type { Question, Test } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, BookCheck, AlertCircle } from 'lucide-react';
+import { Loader, BookCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 const createTestSchema = z.object({
@@ -68,9 +65,6 @@ export function CreateTestClientPage() {
 
   const { data: availableQuestions, isLoading: isLoadingQuestions } = useCollection<Question>(questionsQuery);
   const questionCount = availableQuestions?.length ?? 0;
-  
-  const examsForCategory = useMemo(() => getExamsForCategory(category), [category]);
-  const subjectsForExam = useMemo(() => getSubjectsForExam(category, examName), [category, examName]);
 
   async function onSubmit(values: CreateTestForm) {
     setIsSubmitting(true);
@@ -86,18 +80,17 @@ export function CreateTestClientPage() {
 
     try {
       const testCollection = collection(firestore, 'tests');
-      const testData: Omit<Test, 'id'> = {
+      const testData: Omit<Test, 'id' | 'createdAt'> & { createdAt: any } = {
         ...values,
         price: values.isFree ? 0 : values.price || 0,
-        isPublished: true, // Auto-publish on creation
-        createdAt: serverTimestamp() as any, // Let server set the timestamp
+        createdAt: serverTimestamp(),
       };
 
       await addDoc(testCollection, testData);
 
       toast({
         title: 'Test Created Successfully!',
-        description: `"${values.title}" has been published.`,
+        description: `"${values.title}" has been created.`,
         className: 'bg-green-100 dark:bg-green-900',
       });
 
@@ -140,20 +133,9 @@ export function CreateTestClientPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {filterOptions.map((cat) => (
-                          <SelectItem key={cat.value} value={cat.value}>
-                            {cat.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Input placeholder="e.g., engineering" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -164,20 +146,9 @@ export function CreateTestClientPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Exam</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!category}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Exam" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {examsForCategory.map((exam) => (
-                          <SelectItem key={exam.value} value={exam.value}>
-                            {exam.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                     <FormControl>
+                      <Input placeholder="e.g., jee-main" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -188,25 +159,18 @@ export function CreateTestClientPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Subject</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!examName}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Subject" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {subjectsForExam.map((subj) => (
-                          <SelectItem key={subj.value} value={subj.value}>
-                            {subj.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                     <FormControl>
+                      <Input placeholder="e.g., physics" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
+             <FormDescription>
+                Type the exact Category, Exam, and Subject used in your CSV (case-sensitive).
+            </FormDescription>
+
 
             {subject && (
               <div className="flex items-center justify-center p-3 bg-muted rounded-lg">
