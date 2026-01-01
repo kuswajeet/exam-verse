@@ -10,10 +10,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from "@/firebase";
-import { initiateEmailSignIn } from "@/firebase/non-blocking-login";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
 import React from "react";
+import { useRouter } from "next/navigation";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -23,6 +24,7 @@ const loginSchema = z.object({
 export default function LoginPage() {
   const auth = useAuth();
   const [authError, setAuthError] = React.useState<string | null>(null);
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -33,14 +35,17 @@ export default function LoginPage() {
   });
 
   async function onSubmit(values: z.infer<typeof loginSchema>) {
+    setAuthError(null);
     try {
-      initiateEmailSignIn(auth, values.email, values.password);
-      // The useUser hook will handle the redirect on successful login
+      await signInWithEmailAndPassword(auth, values.email, values.password);
+      // The useUser hook/AuthWrapper will handle the redirect on successful login
+      router.push('/dashboard');
     } catch (error: any) {
-       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         setAuthError('Invalid email or password. Please try again.');
       } else {
         setAuthError('An unexpected error occurred. Please try again later.');
+        console.error(error);
       }
     }
   }
@@ -95,8 +100,8 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full">
-                Login
+              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? "Logging in..." : "Login"}
               </Button>
               <Button variant="outline" className="w-full" type="button">
                 Login with Google

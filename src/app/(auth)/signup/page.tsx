@@ -10,11 +10,10 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { signupAction, SignupFormState } from "./actions";
-import { useActionState } from "react"; // <--- FIXED: Updated for Next.js 15
+import { useActionState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
 import { useEffect } from "react";
-import { useUser } from "@/firebase"; 
 import { useRouter } from "next/navigation";
 
 const signupSchema = z.object({
@@ -32,7 +31,6 @@ const initialState: SignupFormState = {
 
 export default function SignupPage() {
   const [state, formAction, isPending] = useActionState(signupAction, initialState);
-  const { user, isUserLoading } = useUser();
   const router = useRouter();
 
   const form = useForm<z.infer<typeof signupSchema>>({
@@ -47,10 +45,13 @@ export default function SignupPage() {
   });
 
   useEffect(() => {
-    if (!isUserLoading && user) {
-        router.push('/dashboard');
+    if (state.status === 'success') {
+      const timer = setTimeout(() => {
+        router.push('/login');
+      }, 2000);
+      return () => clearTimeout(timer);
     }
-  }, [user, isUserLoading, router]);
+  }, [state.status, router]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background py-12">
@@ -70,7 +71,7 @@ export default function SignupPage() {
                 </Alert>
               )}
                {state.status === 'success' && (
-                <Alert className="bg-green-50 text-green-700 border-green-200">
+                <Alert className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800">
                   <Terminal className="h-4 w-4" />
                   <AlertTitle>Success</AlertTitle>
                   <AlertDescription>{state.message}</AlertDescription>
