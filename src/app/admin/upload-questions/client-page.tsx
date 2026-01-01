@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
 import {
   Card,
   CardContent,
@@ -25,27 +25,8 @@ const initialState: FormState = {
   message: "",
 };
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? (
-        <>
-          <Loader className="mr-2 h-4 w-4 animate-spin" />
-          Uploading...
-        </>
-      ) : (
-        <>
-          <Upload className="mr-2 h-4 w-4" />
-          Upload and Save to Firestore
-        </>
-      )}
-    </Button>
-  );
-}
-
 export function UploadQuestionsClientPage() {
-  const [state, formAction] = useFormState(uploadQuestionsAction, initialState);
+  const [state, formAction, isPending] = useActionState(uploadQuestionsAction, initialState);
 
   return (
     <div className="grid gap-6">
@@ -117,7 +98,19 @@ export function UploadQuestionsClientPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <SubmitButton />
+            <Button type="submit" disabled={isPending}>
+              {isPending ? (
+                <>
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload and Save to Firestore
+                </>
+              )}
+            </Button>
           </CardFooter>
         </form>
       </Card>

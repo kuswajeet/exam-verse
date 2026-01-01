@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
 import {
   Card,
   CardContent,
@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { generateQuestionAction, FormState } from "./actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { BrainCircuit, CheckCircle, Copy, Save, Terminal, XCircle } from "lucide-react";
+import { BrainCircuit, CheckCircle, Copy, Loader, Save, Terminal, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,17 +31,8 @@ const initialState: FormState = {
   message: "",
 };
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? "Generating..." : "Generate Question"}
-    </Button>
-  );
-}
-
 export function GenerateQuestionClientPage() {
-  const [state, formAction] = useFormState(generateQuestionAction, initialState);
+  const [state, formAction, isPending] = useActionState(generateQuestionAction, initialState);
   const { toast } = useToast();
 
   const copyToClipboard = (text: string) => {
@@ -96,7 +87,14 @@ export function GenerateQuestionClientPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <SubmitButton />
+            <Button type="submit" disabled={isPending}>
+              {isPending ? (
+                <>
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                </>
+              ) : "Generate Question"}
+            </Button>
           </CardFooter>
         </form>
       </Card>
