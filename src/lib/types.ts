@@ -1,4 +1,5 @@
 
+
 import { Timestamp } from "firebase/firestore";
 
 export interface User {
@@ -39,6 +40,7 @@ export interface Test {
   price: number;
   durationMinutes: number;
   totalMarks: number;
+  questionCount?: number;
   isPublished?: boolean;
   createdAt?: Timestamp;
 }
@@ -57,3 +59,5 @@ export interface TestAttempt {
   totalQuestions: number;
   completedAt: Timestamp;
 }
+
+    

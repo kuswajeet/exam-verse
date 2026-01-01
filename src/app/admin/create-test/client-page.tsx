@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -37,6 +37,12 @@ export function CreateTestClientPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [uniqueValues, setUniqueValues] = useState({
+    categories: [] as string[],
+    examNames: [] as string[],
+    subjects: [] as string[],
+  });
+
   const form = useForm<CreateTestForm>({
     resolver: zodResolver(createTestSchema),
     defaultValues: {
@@ -53,6 +59,31 @@ export function CreateTestClientPage() {
 
   const { category, examName, subject } = form.watch();
 
+  // 1. Fetch all questions to extract unique values
+  const allQuestionsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'questions') : null, [firestore]);
+  const { data: allQuestions } = useCollection<Question>(allQuestionsQuery);
+
+  // 2. Extract unique values once questions are loaded
+  useEffect(() => {
+    if (allQuestions) {
+      const categories = new Set<string>();
+      const examNames = new Set<string>();
+      const subjects = new Set<string>();
+      allQuestions.forEach(q => {
+        if (q.category) categories.add(q.category);
+        if (q.examName) examNames.add(q.examName);
+        if (q.subject) subjects.add(q.subject);
+      });
+      setUniqueValues({
+        categories: Array.from(categories),
+        examNames: Array.from(examNames),
+        subjects: Array.from(subjects),
+      });
+    }
+  }, [allQuestions]);
+
+
+  // 3. Query for available questions based on form input
   const questionsQuery = useMemoFirebase(() => {
     if (!firestore || !category || !examName || !subject) return null;
     return query(
@@ -80,10 +111,11 @@ export function CreateTestClientPage() {
 
     try {
       const testCollection = collection(firestore, 'tests');
-      const testData: Omit<Test, 'id' | 'createdAt'> & { createdAt: any } = {
+      const testData: Omit<Test, 'id' | 'createdAt'> & { createdAt: any, questionCount: number } = {
         ...values,
         price: values.isFree ? 0 : values.price || 0,
         createdAt: serverTimestamp(),
+        questionCount: questionCount,
       };
 
       await addDoc(testCollection, testData);
@@ -134,8 +166,11 @@ export function CreateTestClientPage() {
                   <FormItem>
                     <FormLabel>Category</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., engineering" {...field} />
+                      <Input placeholder="Select or type new..." {...field} list="category-list" />
                     </FormControl>
+                     <datalist id="category-list">
+                      {uniqueValues.categories.map(cat => <option key={cat} value={cat} />)}
+                    </datalist>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -147,8 +182,11 @@ export function CreateTestClientPage() {
                   <FormItem>
                     <FormLabel>Exam</FormLabel>
                      <FormControl>
-                      <Input placeholder="e.g., jee-main" {...field} />
+                      <Input placeholder="Select or type new..." {...field} list="exam-list"/>
                     </FormControl>
+                     <datalist id="exam-list">
+                      {uniqueValues.examNames.map(exam => <option key={exam} value={exam} />)}
+                    </datalist>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -160,15 +198,18 @@ export function CreateTestClientPage() {
                   <FormItem>
                     <FormLabel>Subject</FormLabel>
                      <FormControl>
-                      <Input placeholder="e.g., physics" {...field} />
+                      <Input placeholder="Select or type new..." {...field} list="subject-list" />
                     </FormControl>
+                    <datalist id="subject-list">
+                      {uniqueValues.subjects.map(sub => <option key={sub} value={sub} />)}
+                    </datalist>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
              <FormDescription>
-                Type the exact Category, Exam, and Subject used in your CSV (case-sensitive).
+                Type the exact Category, Exam, and Subject (case-sensitive) or select from existing values.
             </FormDescription>
 
 
@@ -268,3 +309,5 @@ export function CreateTestClientPage() {
     </Card>
   );
 }
+
+    
