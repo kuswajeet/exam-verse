@@ -19,8 +19,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import type { Test, Question } from "@/lib/types";
-import { collection, query, where } from "firebase/firestore";
+import type { Test } from "@/lib/types";
+import { collection } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,12 +40,6 @@ export default function TestsPage() {
     [firestore]
   );
   const { data: tests, isLoading: isLoadingTests } = useCollection<Test>(testsQuery);
-
-  const questionsQuery = useMemoFirebase(
-    () => (firestore ? collection(firestore, "questions") : null),
-    [firestore]
-  );
-  const { data: questions, isLoading: isLoadingQuestions } = useCollection<Question>(questionsQuery);
 
   const handleCategoryChange = (value: string) => {
     setSelectedCategory(value);
@@ -71,18 +65,7 @@ export default function TestsPage() {
   const examsForCategory = useMemo(() => getExamsForCategory(selectedCategory), [selectedCategory]);
   const subjectsForExam = useMemo(() => getSubjectsForExam(selectedCategory, selectedExam), [selectedCategory, selectedExam]);
 
-  const getQuestionCountForTest = (testId: string) => {
-    if (!questions) return 0;
-    return questions.filter(q => {
-      // This is a simplified logic. In a real app, a test would have a list of question IDs.
-      // Here, we assume questions belong to a test if exam, subject, and category match.
-      const test = tests?.find(t => t.id === testId);
-      if (!test) return false;
-      return q.examName === test.examName && q.subject === test.subject && q.category === test.category;
-    }).length;
-  }
-
-  const isLoading = isLoadingTests || isLoadingQuestions;
+  const isLoading = isLoadingTests;
 
   return (
     <div className="space-y-6">
@@ -159,7 +142,7 @@ export default function TestsPage() {
               <TableRow key={test.id}>
                 <TableCell className="font-medium">{test.title}</TableCell>
                 <TableCell>{test.subject}</TableCell>
-                <TableCell>{getQuestionCountForTest(test.id)}</TableCell>
+                <TableCell>{test.questionCount || 0}</TableCell>
                 <TableCell>{test.durationMinutes} min</TableCell>
                 <TableCell>
                   {test.isFree ? (

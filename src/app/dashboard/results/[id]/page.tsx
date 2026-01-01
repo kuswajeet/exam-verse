@@ -14,23 +14,27 @@ import { format } from "date-fns";
 import React from "react";
 
 async function getTestWithQuestions(firestore: any, testId: string): Promise<TestWithQuestions | null> {
-    const testDocSnapshot = await getDocs(query(collection(firestore, 'tests'), where('__name__', '==', testId)));
-
-    if (testDocSnapshot.empty) {
+    const testRef = doc(firestore, 'tests', testId);
+    const testSnapshot = await getDocs(query(collection(firestore, 'tests'), where('__name__', '==', testId)));
+    
+    if (testSnapshot.empty) {
         return null;
     }
 
-    const testData = { id: testDocSnapshot.docs[0].id, ...testDocSnapshot.docs[0].data() } as Test;
-
-    const questionsQuery = query(
-        collection(firestore, 'questions'),
-        where('examName', '==', testData.examName),
-        where('category', '==', testData.category),
-        where('subject', '==', testData.subject)
-    );
-
+    const testData = { id: testSnapshot.docs[0].id, ...testSnapshot.docs[0].data() } as Test;
+    
+    if (!testData.questionIds || testData.questionIds.length === 0) {
+        return { ...testData, questions: [] };
+    }
+    
+    // Firestore 'in' queries are limited to 30 elements. 
+    // If a test can have more, this needs to be chunked.
+    const questionsQuery = query(collection(firestore, 'questions'), where('__name__', 'in', testData.questionIds));
     const questionsSnapshot = await getDocs(questionsQuery);
-    const questions = questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Question));
+
+    // This ensures question order is preserved from the test document
+    const questionsMap = new Map(questionsSnapshot.docs.map(doc => [doc.id, { id: doc.id, ...doc.data() } as Question]));
+    const questions = testData.questionIds.map(id => questionsMap.get(id)).filter((q): q is Question => !!q);
     
     return { ...testData, questions };
 }
@@ -61,7 +65,7 @@ export default function ResultDetailPage({ params }: { params: { id: string } })
 
   }, [firestore, attempt?.testId]);
 
-  if (isLoadingAttempt || (attempt && !test)) {
+  if (isLoadingAttempt || (attempt && isLoadingTest)) {
     return (
         <div className="space-y-6">
             <Card>
@@ -88,13 +92,13 @@ export default function ResultDetailPage({ params }: { params: { id: string } })
         </div>
     );
   }
-
+  
   if (!attempt) {
     return <p className="text-center text-muted-foreground">Result not found. It might still be processing, or the link is invalid.</p>;
   }
   
-  if (!test) {
-    notFound();
+  if (!test || !test.questions) {
+     return <p className="text-center text-muted-foreground">Could not load the questions for this test result.</p>;
   }
 
   const accuracy = (attempt.score / attempt.totalQuestions) * 100;

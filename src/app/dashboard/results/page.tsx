@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, query, orderBy } from "firebase/firestore";
 import type { TestAttempt } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -29,7 +29,7 @@ export default function ResultsPage() {
   const firestore = useFirestore();
 
   const resultsQuery = useMemoFirebase(
-    () => (user && firestore ? collection(firestore, `users/${user.uid}/results`) : null),
+    () => (user && firestore ? query(collection(firestore, `users/${user.uid}/results`), orderBy('completedAt', 'desc')) : null),
     [user, firestore]
   );
   
@@ -76,7 +76,7 @@ export default function ResultsPage() {
                       {((attempt.score / attempt.totalQuestions) * 100).toFixed(0)}%
                     </Badge>
                   </TableCell>
-                  <TableCell>{format(new Date(attempt.completedAt.seconds * 1000), "PP")}</TableCell>
+                  <TableCell>{attempt.completedAt ? format(new Date(attempt.completedAt.seconds * 1000), "PP") : 'N/A'}</TableCell>
                   <TableCell className="text-right">
                     <Button asChild variant="outline">
                       <Link href={`/dashboard/results/${attempt.id}`}>View Details</Link>

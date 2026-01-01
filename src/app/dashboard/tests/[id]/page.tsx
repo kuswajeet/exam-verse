@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from 'react';
 import { notFound, useRouter } from 'next/navigation';
@@ -11,28 +11,32 @@ import { ArrowLeft, ArrowRight, Check, Clock } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import type { Test, TestWithQuestions, Question, TestAttempt } from '@/lib/types';
-import { doc, collection, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { doc, collection, serverTimestamp, query, where, getDocs, DocumentData } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 async function getTestWithQuestions(firestore: any, testId: string): Promise<TestWithQuestions | null> {
     const testRef = doc(firestore, 'tests', testId);
-    const testDoc = await getDocs(query(collection(firestore, 'tests'), where('__name__', '==', testId)));
-
-    if (testDoc.empty) {
+    const testSnapshot = await getDocs(query(collection(firestore, 'tests'), where('__name__', '==', testId)));
+    
+    if (testSnapshot.empty) {
         return null;
     }
 
-    const testData = { id: testDoc.docs[0].id, ...testDoc.docs[0].data() } as Test;
-
-    const questionsQuery = query(
-        collection(firestore, 'questions'),
-        where('examName', '==', testData.examName),
-        where('category', '==', testData.category),
-        where('subject', '==', testData.subject)
-    );
-
+    const testData = { id: testSnapshot.docs[0].id, ...testSnapshot.docs[0].data() } as Test;
+    
+    if (!testData.questionIds || testData.questionIds.length === 0) {
+        return { ...testData, questions: [] };
+    }
+    
+    // Firestore 'in' queries are limited to 30 elements. 
+    // If a test can have more, this needs to be chunked.
+    const questionsQuery = query(collection(firestore, 'questions'), where('__name__', 'in', testData.questionIds));
     const questionsSnapshot = await getDocs(questionsQuery);
-    const questions = questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Question));
+
+    // This ensures question order is preserved from the test document
+    const questionsMap = new Map(questionsSnapshot.docs.map(doc => [doc.id, { id: doc.id, ...doc.data() } as Question]));
+    const questions = testData.questionIds.map(id => questionsMap.get(id)).filter((q): q is Question => !!q);
     
     return { ...testData, questions };
 }
@@ -89,11 +93,10 @@ export default function TestTakerPage({ params }: { params: { id: string } }) {
 
     try {
       const docRef = await addDocumentNonBlocking(resultsCollection, attemptData);
-      if (docRef) {
-        router.push(`/dashboard/results/${docRef.id}`);
-      } else {
-        router.push(`/dashboard/results`);
-      }
+      // Non-blocking will resolve to undefined on client, but the onSnapshot listener for results will pick it up
+      // We can redirect to the results page, or to the specific result if we can get the ID.
+      // For now, redirecting to the main results list is safest.
+      router.push(`/dashboard/results`);
     } catch (error) {
         console.error("Submission failed, navigating to results page.");
         router.push(`/dashboard/results`);
@@ -111,6 +114,7 @@ export default function TestTakerPage({ params }: { params: { id: string } }) {
       setTimeLeft(prevTime => {
         if (prevTime <= 1) {
           clearInterval(timer);
+          finishTest(); // Auto-submit when time is up
           return 0;
         }
         return prevTime - 1;
@@ -123,7 +127,8 @@ export default function TestTakerPage({ params }: { params: { id: string } }) {
 
   if (isLoadingTest) {
       return (
-          <div className="max-w-4xl mx-auto">
+        <div className="flex gap-6">
+            <div className="w-3/4 space-y-4">
               <Card>
                   <CardHeader>
                       <Skeleton className="h-8 w-3/4" />
@@ -143,11 +148,24 @@ export default function TestTakerPage({ params }: { params: { id: string } }) {
                        </div>
                   </CardContent>
               </Card>
-          </div>
+            </div>
+             <div className="w-1/4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Question Palette</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-5 gap-2">
+                        {Array.from({length: 20}).map((_, i) => (
+                             <Skeleton key={i} className="h-10 w-10" />
+                        ))}
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
       )
   }
 
-  if (!test) {
+  if (!test || !test.questions || test.questions.length === 0) {
     notFound();
   }
 
@@ -165,7 +183,8 @@ export default function TestTakerPage({ params }: { params: { id: string } }) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="flex gap-6">
+      <div className="w-3/4">
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -236,6 +255,30 @@ export default function TestTakerPage({ params }: { params: { id: string } }) {
             </div>
         </CardContent>
       </Card>
+      </div>
+      <div className="w-1/4">
+        <Card>
+            <CardHeader>
+                <CardTitle>Question Palette</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-5 gap-2">
+                {test.questions.map((q, index) => (
+                    <Button
+                        key={q.id}
+                        variant={currentQuestionIndex === index ? "default" : userAnswers[q.id] !== undefined ? "outline" : "secondary"}
+                        className={cn(
+                            "h-10 w-10 p-0",
+                            currentQuestionIndex === index && "bg-accent text-accent-foreground",
+                            userAnswers[q.id] !== undefined && currentQuestionIndex !== index && "bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 border-green-300",
+                        )}
+                        onClick={() => setCurrentQuestionIndex(index)}
+                    >
+                        {index + 1}
+                    </Button>
+                ))}
+            </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
