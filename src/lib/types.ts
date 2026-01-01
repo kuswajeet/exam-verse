@@ -1,9 +1,12 @@
 export interface User {
   uid: string;
   email: string;
-  name: string;
+  name?: string;
   avatarUrl?: string;
   role: 'admin' | 'student';
+  mobileNumber?: string;
+  enrolledExams?: string[];
+  purchasedTests?: string[];
 }
 
 export interface Question {
