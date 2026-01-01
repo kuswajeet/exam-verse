@@ -1,21 +1,45 @@
 'use client';
 
-import { notFound } from "next/navigation";
-import { mockTests } from "@/lib/placeholder-data";
+import { notFound, useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { CheckCircle2, XCircle, AlertCircle, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
-import type { TestAttempt } from "@/lib/types";
+import { doc, collection, query, where, getDocs } from "firebase/firestore";
+import type { TestAttempt, Question, TestWithQuestions, Test } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import React from "react";
+
+async function getTestWithQuestions(firestore: any, testId: string): Promise<TestWithQuestions | null> {
+    const testDocSnapshot = await getDocs(query(collection(firestore, 'tests'), where('__name__', '==', testId)));
+
+    if (testDocSnapshot.empty) {
+        return null;
+    }
+
+    const testData = { id: testDocSnapshot.docs[0].id, ...testDocSnapshot.docs[0].data() } as Test;
+
+    const questionsQuery = query(
+        collection(firestore, 'questions'),
+        where('examName', '==', testData.examName),
+        where('category', '==', testData.category),
+        where('subject', '==', testData.subject)
+    );
+
+    const questionsSnapshot = await getDocs(questionsQuery);
+    const questions = questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Question));
+    
+    return { ...testData, questions };
+}
 
 export default function ResultDetailPage({ params }: { params: { id: string } }) {
   const { user } = useUser();
   const firestore = useFirestore();
+  const [test, setTest] = React.useState<TestWithQuestions | null>(null);
+  const [isLoadingTest, setIsLoadingTest] = React.useState(true);
 
   const resultDocRef = useMemoFirebase(
     () => (user && firestore ? doc(firestore, `users/${user.uid}/results`, params.id) : null),
@@ -24,7 +48,20 @@ export default function ResultDetailPage({ params }: { params: { id: string } })
   
   const { data: attempt, isLoading: isLoadingAttempt } = useDoc<TestAttempt>(resultDocRef);
 
-  if (isLoadingAttempt) {
+  React.useEffect(() => {
+    if (!firestore || !attempt?.testId) return;
+    
+    const fetchTest = async () => {
+        setIsLoadingTest(true);
+        const testWithQuestions = await getTestWithQuestions(firestore, attempt.testId);
+        setTest(testWithQuestions);
+        setIsLoadingTest(false);
+    }
+    fetchTest();
+
+  }, [firestore, attempt?.testId]);
+
+  if (isLoadingAttempt || (attempt && !test)) {
     return (
         <div className="space-y-6">
             <Card>
@@ -56,10 +93,6 @@ export default function ResultDetailPage({ params }: { params: { id: string } })
     return <p className="text-center text-muted-foreground">Result not found. It might still be processing, or the link is invalid.</p>;
   }
   
-  // For now, we still get the questions from mock data.
-  // In a real app, questions would be fetched from Firestore based on testId.
-  const test = mockTests.find(t => t.id === attempt.testId);
-
   if (!test) {
     notFound();
   }

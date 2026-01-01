@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { notFound, useRouter } from 'next/navigation';
-import { mockTests } from '@/lib/placeholder-data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -10,21 +9,60 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, ArrowRight, Check, Clock } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { useUser, useFirestore, useDoc, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
-import type { Test, TestAttempt } from '@/lib/types';
-import { doc, collection, serverTimestamp } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
+import type { Test, TestWithQuestions, Question, TestAttempt } from '@/lib/types';
+import { doc, collection, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
+
+async function getTestWithQuestions(firestore: any, testId: string): Promise<TestWithQuestions | null> {
+    const testRef = doc(firestore, 'tests', testId);
+    const testDoc = await getDocs(query(collection(firestore, 'tests'), where('__name__', '==', testId)));
+
+    if (testDoc.empty) {
+        return null;
+    }
+
+    const testData = { id: testDoc.docs[0].id, ...testDoc.docs[0].data() } as Test;
+
+    const questionsQuery = query(
+        collection(firestore, 'questions'),
+        where('examName', '==', testData.examName),
+        where('category', '==', testData.category),
+        where('subject', '==', testData.subject)
+    );
+
+    const questionsSnapshot = await getDocs(questionsQuery);
+    const questions = questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Question));
+    
+    return { ...testData, questions };
+}
+
 
 export default function TestTakerPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // For now, we will use mock data for the test itself, but save results to firestore
-  const [test] = useState(() => mockTests.find(t => t.id === params.id));
+  const [test, setTest] = useState<TestWithQuestions | null>(null);
+  const [isLoadingTest, setIsLoadingTest] = useState(true);
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<string, number>>({});
-  const [timeLeft, setTimeLeft] = useState(test ? test.durationMinutes * 60 : 0);
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  useEffect(() => {
+    if (!firestore) return;
+    const fetchTest = async () => {
+        setIsLoadingTest(true);
+        const testWithQuestions = await getTestWithQuestions(firestore, params.id);
+        setTest(testWithQuestions);
+        if (testWithQuestions) {
+            setTimeLeft(testWithQuestions.durationMinutes * 60);
+        }
+        setIsLoadingTest(false);
+    }
+    fetchTest();
+  }, [firestore, params.id]);
   
   const finishTest = async () => {
     if (!user || !firestore || !test) return;
@@ -51,18 +89,12 @@ export default function TestTakerPage({ params }: { params: { id: string } }) {
 
     try {
       const docRef = await addDocumentNonBlocking(resultsCollection, attemptData);
-      // addDocumentNonBlocking returns a promise that resolves with the doc ref on success.
       if (docRef) {
         router.push(`/dashboard/results/${docRef.id}`);
       } else {
-        // Fallback in case docRef is not returned, though it should be.
-        // This is less ideal as it doesn't lead to the specific result.
         router.push(`/dashboard/results`);
       }
     } catch (error) {
-        // If addDocumentNonBlocking was changed to throw, this would catch it.
-        // But with the current non-blocking setup, errors are emitted globally.
-        // We can still push the user away from the test page on any submission attempt.
         console.error("Submission failed, navigating to results page.");
         router.push(`/dashboard/results`);
     }
@@ -70,7 +102,7 @@ export default function TestTakerPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     if (!test || timeLeft <= 0) {
-        if(timeLeft <= 0) {
+        if(test && timeLeft <= 0 && currentQuestionIndex > 0) { // check current question to avoid trigger on load
             finishTest();
         }
       return;
@@ -88,6 +120,32 @@ export default function TestTakerPage({ params }: { params: { id: string } }) {
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [test, timeLeft]);
+
+  if (isLoadingTest) {
+      return (
+          <div className="max-w-4xl mx-auto">
+              <Card>
+                  <CardHeader>
+                      <Skeleton className="h-8 w-3/4" />
+                      <Skeleton className="h-4 w-1/2" />
+                      <Skeleton className="h-4 w-full mt-4" />
+                  </CardHeader>
+                  <CardContent className="space-y-8">
+                       <div className="space-y-4">
+                           <Skeleton className="h-6 w-full" />
+                            <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-10 w-full" />
+                       </div>
+                       <div className="flex justify-between items-center pt-4 border-t">
+                            <Skeleton className="h-10 w-24" />
+                            <Skeleton className="h-10 w-24" />
+                       </div>
+                  </CardContent>
+              </Card>
+          </div>
+      )
+  }
 
   if (!test) {
     notFound();

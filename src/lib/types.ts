@@ -29,11 +29,16 @@ export interface Question {
 export interface Test {
   id: string;
   title: string;
+  category: string;
+  examName: string;
   subject: string;
   isFree: boolean;
   price: number;
   durationMinutes: number;
   totalMarks: number;
+}
+
+export interface TestWithQuestions extends Test {
   questions: Question[];
 }
 

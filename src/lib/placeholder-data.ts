@@ -1,4 +1,4 @@
-import type { User, Test, Question, TestAttempt } from '@/lib/types';
+import type { User, TestWithQuestions, Question, TestAttempt } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 
 export const mockUser: User = {
@@ -16,8 +16,12 @@ export const mockQuestions: Question[] = [
     options: ['Berlin', 'Madrid', 'Paris', 'Rome'],
     correctAnswerIndex: 2,
     explanation: 'Paris is the capital and most populous city of France.',
+    category: 'general',
+    examName: 'sat',
+    subject: 'geography',
     topic: 'Geography',
     difficulty: 'easy',
+    questionType: 'single_choice',
   },
   {
     id: 'q2',
@@ -25,8 +29,12 @@ export const mockQuestions: Question[] = [
     options: ['Earth', 'Mars', 'Jupiter', 'Venus'],
     correctAnswerIndex: 1,
     explanation: 'Mars is often called the "Red Planet" because of its reddish appearance.',
+    category: 'general',
+    examName: 'sat',
+    subject: 'science',
     topic: 'Astronomy',
     difficulty: 'easy',
+    questionType: 'single_choice',
   },
   {
     id: 'q3',
@@ -34,8 +42,12 @@ export const mockQuestions: Question[] = [
     options: ['Nucleus', 'Ribosome', 'Mitochondrion', 'Cell Wall'],
     correctAnswerIndex: 2,
     explanation: 'Mitochondria are responsible for generating most of the cell\'s supply of adenosine triphosphate (ATP), used as a source of chemical energy.',
+    category: 'medical',
+    examName: 'neet',
+    subject: 'biology',
     topic: 'Biology',
     difficulty: 'medium',
+    questionType: 'single_choice',
   },
   {
     id: 'q4',
@@ -43,25 +55,35 @@ export const mockQuestions: Question[] = [
     options: ['Harper Lee', 'J.K. Rowling', 'Ernest Hemingway', 'Mark Twain'],
     correctAnswerIndex: 0,
     explanation: 'Harper Lee published "To Kill a Mockingbird" in 1960, and it was an immediate success.',
+    category: 'general',
+    examName: 'sat',
+    subject: 'literature',
     topic: 'Literature',
     difficulty: 'medium',
+    questionType: 'single_choice',
   },
   {
     id: 'q5',
     questionText: 'What is the value of x in the equation 2x + 3 = 11?',
     options: ['3', '4', '5', '6'],
     correctAnswerIndex: 1,
-    explanation: '2x + 3 = 11 -> 2x = 8 -> x = 4.',
+    explanation: '2x + 3 = 8 -> x = 4.',
+    category: 'engineering',
+    examName: 'jee-main',
+    subject: 'maths',
     topic: 'Algebra',
     difficulty: 'easy',
+    questionType: 'single_choice',
   }
 ];
 
-export const mockTests: Test[] = [
+export const mockTests: TestWithQuestions[] = [
   {
     id: 'test1',
     title: 'General Knowledge - I',
     subject: 'General Knowledge',
+    category: 'general',
+    examName: 'sat',
     isFree: true,
     price: 0,
     durationMinutes: 5,
@@ -72,6 +94,8 @@ export const mockTests: Test[] = [
     id: 'test2',
     title: 'Basic Science Quiz',
     subject: 'Science',
+    category: 'general',
+    examName: 'sat',
     isFree: false,
     price: 4.99,
     durationMinutes: 10,
@@ -82,6 +106,8 @@ export const mockTests: Test[] = [
     id: 'test3',
     title: 'Algebra Fundamentals',
     subject: 'Mathematics',
+    category: 'engineering',
+    examName: 'jee-main',
     isFree: true,
     price: 0,
     durationMinutes: 15,

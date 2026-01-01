@@ -18,15 +18,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { mockTests } from "@/lib/placeholder-data";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import type { Test } from "@/lib/types";
-import { collection } from "firebase/firestore";
+import type { Test, Question } from "@/lib/types";
+import { collection, query, where } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useMemo } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Lock } from "lucide-react";
+import { filterOptions, getExamsForCategory, getSubjectsForExam } from "@/lib/filter-options";
 
 export default function TestsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
+
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedExam, setSelectedExam] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('');
 
   const testsQuery = useMemoFirebase(
     () => (firestore ? collection(firestore, "tests") : null),
@@ -34,17 +41,94 @@ export default function TestsPage() {
   );
   const { data: tests, isLoading: isLoadingTests } = useCollection<Test>(testsQuery);
 
-  const testsToShow = tests || mockTests;
+  const questionsQuery = useMemoFirebase(
+    () => (firestore ? collection(firestore, "questions") : null),
+    [firestore]
+  );
+  const { data: questions, isLoading: isLoadingQuestions } = useCollection<Question>(questionsQuery);
+
+  const handleCategoryChange = (value: string) => {
+    setSelectedCategory(value);
+    setSelectedExam('');
+    setSelectedSubject('');
+  };
+
+  const handleExamChange = (value: string) => {
+    setSelectedExam(value);
+    setSelectedSubject('');
+  };
+  
+  const filteredTests = useMemo(() => {
+    if (!tests) return [];
+    return tests.filter(test => {
+      const categoryMatch = !selectedCategory || test.category === selectedCategory;
+      const examMatch = !selectedExam || test.examName === selectedExam;
+      const subjectMatch = !selectedSubject || test.subject === selectedSubject;
+      return categoryMatch && examMatch && subjectMatch;
+    });
+  }, [tests, selectedCategory, selectedExam, selectedSubject]);
+
+  const examsForCategory = useMemo(() => getExamsForCategory(selectedCategory), [selectedCategory]);
+  const subjectsForExam = useMemo(() => getSubjectsForExam(selectedCategory, selectedExam), [selectedCategory, selectedExam]);
+
+  const getQuestionCountForTest = (testId: string) => {
+    if (!questions) return 0;
+    return questions.filter(q => {
+      // This is a simplified logic. In a real app, a test would have a list of question IDs.
+      // Here, we assume questions belong to a test if exam, subject, and category match.
+      const test = tests?.find(t => t.id === testId);
+      if (!test) return false;
+      return q.examName === test.examName && q.subject === test.subject && q.category === test.category;
+    }).length;
+  }
+
+  const isLoading = isLoadingTests || isLoadingQuestions;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Available Tests</CardTitle>
-        <CardDescription>
-          Choose a test to start preparing. Good luck!
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Available Tests</CardTitle>
+          <CardDescription>
+            Choose a test to start preparing. Good luck!
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col md:flex-row gap-4">
+            <Select onValueChange={handleCategoryChange} value={selectedCategory}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Select Category" />
+                </SelectTrigger>
+                <SelectContent>
+                    {filterOptions.map(cat => (
+                        <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+             <Select onValueChange={handleExamChange} value={selectedExam} disabled={!selectedCategory}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Select Exam" />
+                </SelectTrigger>
+                <SelectContent>
+                    {examsForCategory.map(exam => (
+                         <SelectItem key={exam.value} value={exam.value}>{exam.label}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            <Select onValueChange={setSelectedSubject} value={selectedSubject} disabled={!selectedExam}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Select Subject" />
+                </SelectTrigger>
+                <SelectContent>
+                    {subjectsForExam.map(subj => (
+                        <SelectItem key={subj.value} value={subj.value}>{subj.label}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            <Button onClick={() => { setSelectedCategory(''); setSelectedExam(''); setSelectedSubject(''); }} variant="outline">Clear Filters</Button>
+        </CardContent>
+      </Card>
+      <Card>
+      <CardContent className="pt-6">
         <Table>
           <TableHeader>
             <TableRow>
@@ -59,7 +143,7 @@ export default function TestsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoadingTests ? (
+            {isLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-32" /></TableCell>
@@ -70,12 +154,12 @@ export default function TestsPage() {
                   <TableCell><Skeleton className="h-8 w-24" /></TableCell>
                 </TableRow>
               ))
-            ) : (
-              testsToShow.map((test) => (
+            ) : filteredTests.length > 0 ? (
+              filteredTests.map((test) => (
               <TableRow key={test.id}>
                 <TableCell className="font-medium">{test.title}</TableCell>
                 <TableCell>{test.subject}</TableCell>
-                <TableCell>{test.questions.length}</TableCell>
+                <TableCell>{getQuestionCountForTest(test.id)}</TableCell>
                 <TableCell>{test.durationMinutes} min</TableCell>
                 <TableCell>
                   {test.isFree ? (
@@ -85,15 +169,29 @@ export default function TestsPage() {
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button asChild>
-                    <Link href={`/dashboard/tests/${test.id}`}>Start Test</Link>
-                  </Button>
+                    {test.isFree ? (
+                        <Button asChild>
+                            <Link href={`/dashboard/tests/${test.id}`}>Start Test</Link>
+                        </Button>
+                    ) : (
+                        <Button disabled>
+                            <Lock className="mr-2 h-4 w-4" />
+                            Purchase
+                        </Button>
+                    )}
                 </TableCell>
               </TableRow>
-            )))}
+            ))) : (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center">
+                  No tests match your filter criteria. Try clearing the filters.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }
