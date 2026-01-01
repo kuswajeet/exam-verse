@@ -24,6 +24,8 @@ export interface Question {
   subTopic?: string;
   difficulty: 'easy' | 'medium' | 'hard';
   questionType: 'single_choice' | 'one_liner';
+  previousYear?: string;
+  sourceExamName?: string;
 }
 
 export interface Test {

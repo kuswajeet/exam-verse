@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -12,12 +12,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { uploadQuestionsAction, FormState } from "./actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle, Loader, Terminal, Upload } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import Papa from "papaparse";
+import { useFirestore } from "@/firebase";
+import { collection, doc, writeBatch } from "firebase/firestore";
+import type { Question } from "@/lib/types";
+
+type FormState = {
+  status: "success" | "error" | "idle";
+  data: Question[] | null;
+  message: string;
+};
 
 const initialState: FormState = {
   status: "idle",
@@ -25,24 +34,140 @@ const initialState: FormState = {
   message: "",
 };
 
+function getCorrectAnswerIndex(letter: string): number {
+    if (!letter) return -1;
+    const upperLetter = letter.toUpperCase();
+    if (upperLetter === 'A') return 0;
+    if (upperLetter === 'B') return 1;
+    if (upperLetter === 'C') return 2;
+    if (upperLetter === 'D') return 3;
+    return -1;
+}
+
 export function UploadQuestionsClientPage() {
-  const [state, formAction, isPending] = useActionState(uploadQuestionsAction, initialState);
+  const [state, setState] = useState<FormState>(initialState);
+  const [isPending, setIsPending] = useState(false);
+  const firestore = useFirestore();
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsPending(true);
+    setState({ status: 'idle', data: null, message: '' });
+
+    const formData = new FormData(event.currentTarget);
+    const file = formData.get("csvFile") as File;
+    const category = formData.get("category") as string;
+    const examName = formData.get("examName") as string;
+    const subject = formData.get("subject") as string;
+    const previousYear = formData.get("previousYear") as string;
+    const sourceExamName = formData.get("sourceExamName") as string;
+
+    if (!file || file.size === 0) {
+      setState({ status: "error", data: null, message: "No file selected." });
+      setIsPending(false);
+      return;
+    }
+
+    if (file.type !== "text/csv") {
+        setState({ status: "error", data: null, message: "Invalid file type. Please upload a CSV." });
+        setIsPending(false);
+        return;
+    }
+
+    const csvText = await file.text();
+
+    try {
+        const result = Papa.parse<any>(csvText, { header: true, skipEmptyLines: true });
+
+        if (result.errors.length > 0) {
+            console.error("CSV Parsing errors:", result.errors);
+            throw new Error(`Error parsing CSV: ${result.errors[0].message}`);
+        }
+
+        const requiredHeaders = ["Question", "OptionA", "OptionB", "OptionC", "OptionD", "CorrectAnswer", "Explanation", "Topic", "Difficulty"];
+        const actualHeaders = result.meta.fields || [];
+        // Check for required headers, but don't fail if optional ones are missing.
+        const missingHeaders = requiredHeaders.filter(h => !actualHeaders.includes(h));
+        if (missingHeaders.length > 0) {
+            throw new Error(`CSV is missing required headers: ${missingHeaders.join(", ")}`);
+        }
+
+        const questions: Question[] = result.data.map((row, index) => {
+            const difficulty = row.Difficulty?.toLowerCase();
+            if (!['easy', 'medium', 'hard'].includes(difficulty)) {
+                throw new Error(`Invalid difficulty value at row ${index + 2}: ${row.Difficulty}`);
+            }
+
+            const correctAnswerIndex = getCorrectAnswerIndex(row.CorrectAnswer);
+            if (correctAnswerIndex === -1) {
+                throw new Error(`Invalid CorrectAnswer value at row ${index + 2}: ${row.CorrectAnswer}. Must be A, B, C, or D.`);
+            }
+
+            const questionId = `csv-${Date.now()}-${index}`;
+
+            return {
+                id: questionId,
+                questionText: row.Question,
+                options: [row.OptionA, row.OptionB, row.OptionC, row.OptionD].filter(Boolean),
+                correctAnswerIndex: correctAnswerIndex,
+                explanation: row.Explanation,
+                category: row.Category || category || "General",
+                examName: row.ExamName || examName || "General",
+                subject: row.Subject || subject || "General",
+                topic: row.Topic,
+                subTopic: row.SubTopic,
+                difficulty: difficulty,
+                questionType: 'single_choice',
+                previousYear: row.PreviousYear || previousYear,
+                sourceExamName: row.SourceExamName || sourceExamName,
+            };
+        });
+
+        const batch = writeBatch(firestore);
+        const questionsRef = collection(firestore, "questions");
+        
+        questions.forEach((question) => {
+          const docRef = doc(questionsRef, question.id);
+          batch.set(docRef, question);
+        });
+
+        await batch.commit();
+
+        setState({
+            status: "success",
+            data: questions,
+            message: `Successfully saved ${questions.length} questions to Firestore.`,
+        });
+
+    } catch (error) {
+        console.error(error);
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during parsing or saving.";
+        setState({
+            status: "error",
+            data: null,
+            message: `Failed to process CSV: ${errorMessage}`,
+        });
+    } finally {
+        setIsPending(false);
+    }
+  }
+
 
   return (
     <div className="grid gap-6">
       <Card>
-        <form action={formAction}>
+        <form onSubmit={handleSubmit}>
           <CardHeader>
             <CardTitle>Upload CSV</CardTitle>
             <CardDescription>
-              Select a CSV file with questions to upload. The required headers are: Question, OptionA, OptionB, OptionC, OptionD, CorrectAnswer, Explanation, Topic, Difficulty.
+              Select a CSV file with questions to upload. Required headers: Question, OptionA, OptionB, OptionC, OptionD, CorrectAnswer, Explanation, Topic, Difficulty. Optional headers: Category, ExamName, Subject, SubTopic, PreviousYear, SourceExamName.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Select name="category" required>
+                <Label htmlFor="category">Category (Fallback)</Label>
+                <Select name="category">
                     <SelectTrigger>
                         <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
@@ -54,8 +179,8 @@ export function UploadQuestionsClientPage() {
                 </Select>
               </div>
                <div className="space-y-2">
-                <Label htmlFor="examName">Exam Name</Label>
-                <Select name="examName" required>
+                <Label htmlFor="examName">Exam Name (Fallback)</Label>
+                <Select name="examName">
                     <SelectTrigger>
                         <SelectValue placeholder="Select Exam" />
                     </SelectTrigger>
@@ -67,8 +192,8 @@ export function UploadQuestionsClientPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="subject">Subject</Label>
-                <Select name="subject" required>
+                <Label htmlFor="subject">Subject (Fallback)</Label>
+                <Select name="subject">
                     <SelectTrigger>
                         <SelectValue placeholder="Select Subject" />
                     </SelectTrigger>
@@ -81,10 +206,20 @@ export function UploadQuestionsClientPage() {
                 </Select>
               </div>
             </div>
-             <div className="space-y-2">
-              <Label htmlFor="subTopic">Sub-Topic (Optional)</Label>
-              <Input id="subTopic" name="subTopic" placeholder="e.g., Kinematics" />
-            </div>
+             <div className="grid md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="previousYear">Previous Year (Optional)</Label>
+                    <Input id="previousYear" name="previousYear" placeholder="e.g., 2023" />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="sourceExamName">Source Exam Name (Optional)</Label>
+                    <Input id="sourceExamName" name="sourceExamName" placeholder="e.g., JEE Advanced" />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="subTopic">Sub-Topic (Optional)</Label>
+                    <Input id="subTopic" name="subTopic" placeholder="e.g., Kinematics" />
+                </div>
+             </div>
             <div className="space-y-2">
               <Label htmlFor="csvFile">CSV File</Label>
               <Input
@@ -135,7 +270,7 @@ export function UploadQuestionsClientPage() {
                         <AlertTitle>Success!</AlertTitle>
                         <AlertDescription>{state.message}</AlertDescription>
                     </Alert>
-                    <div className="mt-4 border rounded-lg">
+                    <div className="mt-4 border rounded-lg max-h-96 overflow-y-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
