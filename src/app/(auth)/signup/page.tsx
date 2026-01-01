@@ -10,20 +10,19 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { signupAction, SignupFormState } from "./actions";
-import { useFormState } from "react-dom";
+import { useActionState } from "react"; // <--- FIXED: Updated for Next.js 15
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
 import { useEffect } from "react";
-import { useUser } from "@/firebase";
+import { useUser } from "@/firebase"; 
 import { useRouter } from "next/navigation";
 
-
 const signupSchema = z.object({
-  fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
-  email: z.string().email({ message: "Invalid email address." }),
-  mobileNumber: z.string().regex(/^\d{10}$/, { message: "Please enter a valid 10-digit mobile number."}),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-  targetExam: z.string().min(1, { message: "Please select a target exam." }),
+  fullName: z.string().min(2, { message: "Name too short" }),
+  email: z.string().email({ message: "Invalid email" }),
+  mobileNumber: z.string().regex(/^\d{10}$/, { message: "Must be 10 digits" }),
+  password: z.string().min(6, { message: "Password too short" }),
+  targetExam: z.string().min(1, { message: "Select an exam" }),
 });
 
 const initialState: SignupFormState = {
@@ -32,7 +31,7 @@ const initialState: SignupFormState = {
 }
 
 export default function SignupPage() {
-  const [state, formAction] = useFormState(signupAction, initialState);
+  const [state, formAction, isPending] = useActionState(signupAction, initialState);
   const { user, isUserLoading } = useUser();
   const router = useRouter();
 
@@ -58,9 +57,7 @@ export default function SignupPage() {
       <Card className="mx-auto max-w-sm w-full">
         <CardHeader>
           <CardTitle className="text-xl">Sign Up</CardTitle>
-          <CardDescription>
-            Enter your information to create an account
-          </CardDescription>
+          <CardDescription>Enter your information to create an account</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -68,26 +65,25 @@ export default function SignupPage() {
                {state.status === 'error' && (
                 <Alert variant="destructive">
                   <Terminal className="h-4 w-4" />
-                  <AlertTitle>Signup Failed</AlertTitle>
+                  <AlertTitle>Error</AlertTitle>
                   <AlertDescription>{state.message}</AlertDescription>
                 </Alert>
               )}
                {state.status === 'success' && (
-                <Alert>
+                <Alert className="bg-green-50 text-green-700 border-green-200">
                   <Terminal className="h-4 w-4" />
                   <AlertTitle>Success</AlertTitle>
                   <AlertDescription>{state.message}</AlertDescription>
                 </Alert>
               )}
+              
               <FormField
                 control={form.control}
                 name="fullName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Full name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="John Doe" {...field} />
-                    </FormControl>
+                    <FormControl><Input placeholder="John Doe" name="fullName" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -98,9 +94,7 @@ export default function SignupPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="m@example.com" {...field} />
-                    </FormControl>
+                    <FormControl><Input placeholder="m@example.com" name="email" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -111,9 +105,7 @@ export default function SignupPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Mobile Number</FormLabel>
-                    <FormControl>
-                      <Input placeholder="1234567890" {...field} />
-                    </FormControl>
+                    <FormControl><Input placeholder="1234567890" name="mobileNumber" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -124,9 +116,7 @@ export default function SignupPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" {...field} />
-                    </FormControl>
+                    <FormControl><Input type="password" name="password" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -137,16 +127,11 @@ export default function SignupPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Target Exam</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select an exam" />
-                          </SelectTrigger>
-                        </FormControl>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} name="targetExam">
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select an exam" /></SelectTrigger></FormControl>
                         <SelectContent>
                           <SelectItem value="jee-main">JEE Main</SelectItem>
                           <SelectItem value="neet">NEET</SelectItem>
-                          <SelectItem value="gate">GATE</SelectItem>
                         </SelectContent>
                       </Select>
                     <FormMessage />
@@ -154,11 +139,8 @@ export default function SignupPage() {
                 )}
               />
 
-              <Button type="submit" className="w-full">
-                Create an account
-              </Button>
-              <Button variant="outline" className="w-full" type="button">
-                Sign up with Google
+              <Button type="submit" className="w-full" disabled={isPending}>
+                {isPending ? "Creating Account..." : "Create an account"}
               </Button>
             </form>
           </Form>
