@@ -11,7 +11,7 @@ import { doc, collection, query, where, getDocs } from "firebase/firestore";
 import type { TestAttempt, Question, TestWithQuestions, Test } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import React from "react";
+import React, { use } from "react";
 
 async function getTestWithQuestions(firestore: any, testId: string): Promise<TestWithQuestions | null> {
     const testRef = doc(firestore, 'tests', testId);
@@ -39,15 +39,16 @@ async function getTestWithQuestions(firestore: any, testId: string): Promise<Tes
     return { ...testData, questions };
 }
 
-export default function ResultDetailPage({ params }: { params: { id: string } }) {
+export default function ResultDetailPage(props: { params: Promise<{ id: string }> }) {
+  const { id } = use(props.params);
   const { user } = useUser();
   const firestore = useFirestore();
   const [test, setTest] = React.useState<TestWithQuestions | null>(null);
   const [isLoadingTest, setIsLoadingTest] = React.useState(true);
 
   const resultDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, `users/${user.uid}/results`, params.id) : null),
-    [user, firestore, params.id]
+    () => (user && firestore ? doc(firestore, `users/${user.uid}/results`, id) : null),
+    [user, firestore, id]
   );
   
   const { data: attempt, isLoading: isLoadingAttempt } = useDoc<TestAttempt>(resultDocRef);

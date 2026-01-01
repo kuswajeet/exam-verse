@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { notFound, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,7 +42,8 @@ async function getTestWithQuestions(firestore: any, testId: string): Promise<Tes
 }
 
 
-export default function TestTakerPage({ params }: { params: { id: string } }) {
+export default function TestTakerPage(props: { params: Promise<{ id: string }> }) {
+  const { id } = use(props.params);
   const router = useRouter();
   const { user } = useUser();
   const firestore = useFirestore();
@@ -58,7 +59,7 @@ export default function TestTakerPage({ params }: { params: { id: string } }) {
     if (!firestore) return;
     const fetchTest = async () => {
         setIsLoadingTest(true);
-        const testWithQuestions = await getTestWithQuestions(firestore, params.id);
+        const testWithQuestions = await getTestWithQuestions(firestore, id);
         setTest(testWithQuestions);
         if (testWithQuestions) {
             setTimeLeft(testWithQuestions.durationMinutes * 60);
@@ -66,7 +67,7 @@ export default function TestTakerPage({ params }: { params: { id: string } }) {
         setIsLoadingTest(false);
     }
     fetchTest();
-  }, [firestore, params.id]);
+  }, [firestore, id]);
   
   const finishTest = async () => {
     if (!user || !firestore || !test) return;
