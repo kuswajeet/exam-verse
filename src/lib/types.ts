@@ -1,3 +1,4 @@
+
 import { Timestamp } from "firebase/firestore";
 
 export interface User {
@@ -21,11 +22,11 @@ export interface Question {
   examName: string;
   subject: string;
   topic: string;
-  subTopic?: string;
+  subTopic?: string | null;
   difficulty: 'easy' | 'medium' | 'hard';
   questionType: 'single_choice' | 'one_liner';
-  previousYear?: string;
-  sourceExamName?: string;
+  previousYear?: string | null;
+  sourceExamName?: string | null;
 }
 
 export interface Test {
@@ -38,6 +39,8 @@ export interface Test {
   price: number;
   durationMinutes: number;
   totalMarks: number;
+  isPublished?: boolean;
+  createdAt?: Timestamp;
 }
 
 export interface TestWithQuestions extends Test {

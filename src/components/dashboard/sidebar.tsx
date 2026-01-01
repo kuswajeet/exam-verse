@@ -13,6 +13,7 @@ import {
   FlaskConical,
   Upload,
   Settings,
+  PlusCircle,
 } from "lucide-react";
 import { usePathname } from 'next/navigation';
 
@@ -36,6 +37,7 @@ const navItems = [
 
 const adminNavItems = [
     { href: "/admin/manage-users", icon: Users, label: "Manage Users" },
+    { href: "/admin/create-test", icon: PlusCircle, label: "Create Test" },
     { href: "/admin/generate-question", icon: FlaskConical, label: "AI Generator" },
     { href: "/admin/upload-questions", icon: Upload, label: "Bulk Upload" },
 ]
@@ -84,7 +86,7 @@ export function DashboardSidebar() {
                     <div className="my-2 mx-4 border-t" />
                      <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Admin</p>
                     {adminNavItems.map((item) => {
-                       const isActive = pathname === item.href;
+                       const isActive = pathname.startsWith(item.href);
                        return (
                         <Link
                             key={item.label}
