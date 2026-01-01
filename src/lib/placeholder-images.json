@@ -1,3 +1,16 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-image-1",
+      "description": "A person studying with a laptop in a modern, bright environment.",
+      "imageUrl": "https://images.unsplash.com/photo-1584697964358-3e14ca57658b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxzdHVkZW50JTIwbGVhcm5pbmd8ZW58MHx8fHwxNzY3MjQ0NzI2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "student learning"
+    },
+    {
+      "id": "user-avatar-1",
+      "description": "Avatar for a sample user.",
+      "imageUrl": "https://images.unsplash.com/photo-1531123414780-f74242c2b052?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8cGVyc29uJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzY3MTkxNDg2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    }
+  ]
 }
