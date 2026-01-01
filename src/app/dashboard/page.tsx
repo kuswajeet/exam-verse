@@ -161,25 +161,3 @@ export default function Dashboard() {
     </div>
   );
 }
-export default function DashboardPage() {
-  return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-slate-900">Dashboard Overview</h1>
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* Metric Cards */}
-        <div className="p-6 bg-white rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-sm font-medium text-slate-500">Total Students</h3>
-          <p className="text-2xl font-bold text-slate-900 mt-2">1,234</p>
-        </div>
-        <div className="p-6 bg-white rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-sm font-medium text-slate-500">Active Exams</h3>
-          <p className="text-2xl font-bold text-slate-900 mt-2">12</p>
-        </div>
-        <div className="p-6 bg-white rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-sm font-medium text-slate-500">Questions Bank</h3>
-          <p className="text-2xl font-bold text-slate-900 mt-2">5,600</p>
-        </div>
-      </div>
-    </div>
-  );
-}
