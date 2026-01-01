@@ -49,6 +49,10 @@ export async function signupAction(
   const { email, password, fullName, mobileNumber, targetExam } = validatedFields.data;
   
   try {
+    if (!auth || !db) {
+      throw new Error('Firebase Admin SDK not initialized correctly.');
+    }
+    
     const userRecord = await auth.createUser({
         email,
         password,
@@ -69,13 +73,15 @@ export async function signupAction(
 
     return {
       status: 'success',
-      message: 'Account created! Please log in.',
+      message: 'Account created! Redirecting to login...',
     };
 
   } catch (error: any) {
-    console.error('Signup Error:', error);
-    let msg = 'Signup failed.';
-    if (error.code === 'auth/email-already-exists') msg = 'Email already exists.';
+    console.error("SIGNUP ERROR:", error);
+    let msg = error.message || 'An unknown signup error occurred.';
+    if (error.code === 'auth/email-already-exists') {
+        msg = 'This email address is already in use by another account.';
+    }
     return { status: 'error', message: msg };
   }
 }

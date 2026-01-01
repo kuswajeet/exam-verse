@@ -66,7 +66,7 @@ export default function SignupPage() {
                {state.status === 'error' && (
                 <Alert variant="destructive">
                   <Terminal className="h-4 w-4" />
-                  <AlertTitle>Error</AlertTitle>
+                  <AlertTitle>Signup Failed</AlertTitle>
                   <AlertDescription>{state.message}</AlertDescription>
                 </Alert>
               )}
