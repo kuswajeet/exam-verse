@@ -53,24 +53,6 @@ service cloud.firestore {
       return resource != null;
     }
     
-    /**
-     * Validates the schema for a new Question document.
-     */
-    function isNewQuestionValid() {
-        let data = request.resource.data;
-        return data.id is string &&
-               data.questionText is string &&
-               data.options is list && data.options.size() >= 2 &&
-               data.correctAnswerIndex is number &&
-               data.explanation is string &&
-               data.category is string &&
-               data.examName is string &&
-               data.subject is string &&
-               data.topic is string &&
-               data.difficulty is string && (data.difficulty == 'easy' || data.difficulty == 'medium' || data.difficulty == 'hard') &&
-               data.questionType is string;
-    }
-
     // --------------------------------------------------------------------------------
     // Collection Rules
     // --------------------------------------------------------------------------------
@@ -81,9 +63,9 @@ service cloud.firestore {
      */
     match /questions/{questionId} {
       allow get, list: if isSignedIn();
-      allow create: if isAdmin() && isNewQuestionValid() && request.resource.data.id == questionId;
-      allow update: if isAdmin() && isExistingDoc() && request.resource.data.id == resource.data.id;
-      allow delete: if isAdmin() && isExistingDoc();
+      // Admins have full write access (create, update, delete).
+      // This simplifies batch uploads from the client.
+      allow write: if isAdmin();
     }
     
     /**
