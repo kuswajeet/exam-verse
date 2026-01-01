@@ -9,12 +9,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { signupAction, SignupFormState } from "./actions";
-import { useActionState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth, useFirestore } from "@/firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { setDoc, doc } from "firebase/firestore";
 
 const signupSchema = z.object({
   fullName: z.string().min(2, { message: "Name too short" }),
@@ -24,14 +25,13 @@ const signupSchema = z.object({
   targetExam: z.string().min(1, { message: "Select an exam" }),
 });
 
-const initialState: SignupFormState = {
-  status: 'idle',
-  message: '',
-}
-
 export default function SignupPage() {
-  const [state, formAction, isPending] = useActionState(signupAction, initialState);
   const router = useRouter();
+  const auth = useAuth();
+  const firestore = useFirestore();
+
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isSuccess, setIsSuccess] = useState<boolean>(false);
 
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
@@ -44,14 +44,48 @@ export default function SignupPage() {
     },
   });
 
+  async function onSubmit(values: z.infer<typeof signupSchema>) {
+    setAuthError(null);
+    setIsSuccess(false);
+
+    try {
+      // Create the user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      // Create the user document in Firestore
+      const userDocRef = doc(firestore, "users", user.uid);
+      await setDoc(userDocRef, {
+        uid: user.uid,
+        email: values.email,
+        name: values.fullName,
+        mobileNumber: values.mobileNumber,
+        role: 'student',
+        enrolledExams: [values.targetExam],
+        createdAt: new Date().toISOString(),
+      });
+      
+      setIsSuccess(true);
+      
+    } catch (error: any) {
+      let msg = error.message || 'An unknown signup error occurred.';
+      if (error.code === 'auth/email-already-in-use') {
+        msg = 'This email address is already in use by another account.';
+      }
+      setAuthError(msg);
+      console.error("SIGNUP ERROR:", error);
+    }
+  }
+
+
   useEffect(() => {
-    if (state.status === 'success') {
+    if (isSuccess) {
       const timer = setTimeout(() => {
         router.push('/login');
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [state.status, router]);
+  }, [isSuccess, router]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background py-12">
@@ -62,19 +96,19 @@ export default function SignupPage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form action={formAction} className="grid gap-4">
-               {state.status === 'error' && (
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
+               {authError && (
                 <Alert variant="destructive">
                   <Terminal className="h-4 w-4" />
                   <AlertTitle>Signup Failed</AlertTitle>
-                  <AlertDescription>{state.message}</AlertDescription>
+                  <AlertDescription>{authError}</AlertDescription>
                 </Alert>
               )}
-               {state.status === 'success' && (
+               {isSuccess && (
                 <Alert className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800">
                   <Terminal className="h-4 w-4" />
                   <AlertTitle>Success</AlertTitle>
-                  <AlertDescription>{state.message}</AlertDescription>
+                  <AlertDescription>Account created! Redirecting to login...</AlertDescription>
                 </Alert>
               )}
               
@@ -84,7 +118,7 @@ export default function SignupPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Full name</FormLabel>
-                    <FormControl><Input placeholder="John Doe" name="fullName" {...field} /></FormControl>
+                    <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -95,7 +129,7 @@ export default function SignupPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email</FormLabel>
-                    <FormControl><Input placeholder="m@example.com" name="email" {...field} /></FormControl>
+                    <FormControl><Input placeholder="m@example.com" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -106,7 +140,7 @@ export default function SignupPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Mobile Number</FormLabel>
-                    <FormControl><Input placeholder="1234567890" name="mobileNumber" {...field} /></FormControl>
+                    <FormControl><Input placeholder="1234567890" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -117,7 +151,7 @@ export default function SignupPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Password</FormLabel>
-                    <FormControl><Input type="password" name="password" {...field} /></FormControl>
+                    <FormControl><Input type="password" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -128,7 +162,7 @@ export default function SignupPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Target Exam</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} name="targetExam">
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Select an exam" /></SelectTrigger></FormControl>
                         <SelectContent>
                           <SelectItem value="jee-main">JEE Main</SelectItem>
@@ -140,8 +174,8 @@ export default function SignupPage() {
                 )}
               />
 
-              <Button type="submit" className="w-full" disabled={isPending}>
-                {isPending ? "Creating Account..." : "Create an account"}
+              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? "Creating Account..." : "Create an account"}
               </Button>
             </form>
           </Form>
