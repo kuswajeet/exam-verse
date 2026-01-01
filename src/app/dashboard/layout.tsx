@@ -1,38 +1,27 @@
 'use client';
 
 import { Sidebar } from "@/components/Sidebar";
-import { useUser } from "@/lib/firebase";
+import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { DashboardHeader } from "@/components/dashboard/header";
+import { DashboardSidebar } from "@/components/dashboard/sidebar";
+import { AuthWrapper } from "@/components/auth-wrapper";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, isUserLoading } = useUser();
-  const router = useRouter();
-
-  // Protect the route
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [isUserLoading, user, router]);
-
-  if (isUserLoading) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
-
-  if (!user) return null; // Prevent flash of content before redirect
-
+  
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      <Sidebar />
-      <main className="ml-64 flex-1 p-8">
-        {children}
-      </main>
-    </div>
+    <AuthWrapper>
+      <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+        <DashboardSidebar />
+        <div className="flex flex-col">
+          <DashboardHeader />
+          <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background">
+            {children}
+          </main>
+        </div>
+      </div>
+    </AuthWrapper>
   );
 }
