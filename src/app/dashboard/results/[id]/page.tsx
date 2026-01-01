@@ -1,11 +1,11 @@
 'use client';
 
-import { notFound, useRouter } from "next/navigation";
+import { notFound } from "next/navigation";
 import { mockTests } from "@/lib/placeholder-data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
@@ -53,9 +53,7 @@ export default function ResultDetailPage({ params }: { params: { id: string } })
   }
 
   if (!attempt) {
-    // This could be a brief state before loading, or the doc doesn't exist
-    // You might want a more specific "Not Found" message if loading is complete and still no data
-    return <p>Result not found.</p>;
+    return <p className="text-center text-muted-foreground">Result not found. It might still be processing, or the link is invalid.</p>;
   }
   
   // For now, we still get the questions from mock data.
@@ -67,18 +65,29 @@ export default function ResultDetailPage({ params }: { params: { id: string } })
   }
 
   const accuracy = (attempt.score / attempt.totalQuestions) * 100;
+  const questionsAnswered = Object.keys(attempt.answers).length;
+  const wrongAnswers = questionsAnswered - attempt.score;
+  const skippedAnswers = attempt.totalQuestions - questionsAnswered;
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Results for: {attempt.testTitle}</CardTitle>
-          <CardDescription>Completed on {format(new Date(attempt.completedAt.seconds * 1000), "PPP")}</CardDescription>
+          {attempt.completedAt && <CardDescription>Completed on {format(new Date(attempt.completedAt.seconds * 1000), "PPP")}</CardDescription>}
         </CardHeader>
-        <CardContent className="grid gap-6 md:grid-cols-3">
-          <div className="flex flex-col items-center justify-center space-y-2 p-4 rounded-lg bg-muted">
-            <span className="text-sm font-medium text-muted-foreground">Score</span>
-            <span className="text-4xl font-bold">{attempt.score}/{attempt.totalQuestions}</span>
+        <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="flex flex-col items-center justify-center space-y-2 p-4 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
+            <span className="text-sm font-medium text-green-800 dark:text-green-300">Correct</span>
+            <span className="text-4xl font-bold text-green-600 dark:text-green-400">{attempt.score}</span>
+          </div>
+           <div className="flex flex-col items-center justify-center space-y-2 p-4 rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800">
+            <span className="text-sm font-medium text-red-800 dark:text-red-300">Wrong</span>
+            <span className="text-4xl font-bold text-red-600 dark:text-red-400">{wrongAnswers}</span>
+          </div>
+          <div className="flex flex-col items-center justify-center space-y-2 p-4 rounded-lg bg-gray-100 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-300">Skipped</span>
+            <span className="text-4xl font-bold text-gray-600 dark:text-gray-400">{skippedAnswers}</span>
           </div>
           <div className="flex flex-col justify-center space-y-2 p-4 rounded-lg bg-muted">
             <span className="text-sm font-medium text-muted-foreground">Accuracy</span>
@@ -86,10 +95,6 @@ export default function ResultDetailPage({ params }: { params: { id: string } })
                 <span className="text-4xl font-bold">{accuracy.toFixed(1)}%</span>
                 <Progress value={accuracy} aria-label={`${accuracy.toFixed(1)}% accuracy`} />
             </div>
-          </div>
-          <div className="flex flex-col items-center justify-center space-y-2 p-4 rounded-lg bg-muted">
-            <span className="text-sm font-medium text-muted-foreground">Time Taken</span>
-             <span className="text-4xl font-bold">4m 32s</span>
           </div>
         </CardContent>
       </Card>
@@ -103,12 +108,17 @@ export default function ResultDetailPage({ params }: { params: { id: string } })
             <Accordion type="single" collapsible className="w-full">
                 {test.questions.map((question, index) => {
                     const userAnswerIndex = attempt.answers[question.id];
-                    const isCorrect = userAnswerIndex === question.correctAnswerIndex;
+                    const wasAnswered = userAnswerIndex !== undefined;
+                    const isCorrect = wasAnswered && userAnswerIndex === question.correctAnswerIndex;
+
                     return (
                         <AccordionItem value={`item-${index}`} key={question.id}>
                             <AccordionTrigger className="hover:no-underline">
                                 <div className="flex items-center gap-4 text-left">
-                                    {isCorrect ? <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" /> : <XCircle className="h-5 w-5 text-red-500 flex-shrink-0" />}
+                                    {isCorrect ? <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" /> 
+                                    : wasAnswered ? <XCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                                    : <HelpCircle className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                                    }
                                     <span className="flex-grow">{index + 1}. {question.questionText}</span>
                                 </div>
                             </AccordionTrigger>
@@ -118,16 +128,19 @@ export default function ResultDetailPage({ params }: { params: { id: string } })
                                         const isUserAnswer = optionIndex === userAnswerIndex;
                                         const isCorrectAnswer = optionIndex === question.correctAnswerIndex;
                                         return (
-                                            <div key={optionIndex} className={cn("flex items-center gap-3 p-3 rounded-lg text-sm", 
-                                                isCorrectAnswer && "bg-green-100 dark:bg-green-900/50 border border-green-200 dark:border-green-800",
-                                                isUserAnswer && !isCorrectAnswer && "bg-red-100 dark:bg-red-900/50 border border-red-200 dark:border-red-800",
-                                                !isCorrectAnswer && !isUserAnswer && "border"
+                                            <div key={optionIndex} className={cn("flex items-center gap-3 p-3 rounded-lg text-sm border", 
+                                                isCorrectAnswer && "bg-green-100 dark:bg-green-900/50 border-green-200 dark:border-green-800",
+                                                isUserAnswer && !isCorrectAnswer && "bg-red-100 dark:bg-red-900/50 border-red-200 dark:border-red-800",
+                                                !isUserAnswer && !isCorrectAnswer && "bg-card"
                                             )}>
                                                 {isCorrectAnswer ? <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" /> 
                                                 : isUserAnswer ? <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                                                 : <div className="h-5 w-5" />
                                                 }
                                                 <span>{option}</span>
+                                                {isCorrectAnswer && !isUserAnswer && wasAnswered && <span className="ml-auto text-xs text-green-700 dark:text-green-300 font-semibold">(Correct Answer)</span>}
+                                                {isUserAnswer && !isCorrectAnswer && <span className="ml-auto text-xs text-red-700 dark:text-red-300 font-semibold">(Your Answer)</span>}
+
                                             </div>
                                         );
                                     })}
@@ -136,7 +149,7 @@ export default function ResultDetailPage({ params }: { params: { id: string } })
                                     <AlertCircle className="h-5 w-5 text-blue-500 flex-shrink-0 mt-1" />
                                     <div>
                                         <h4 className="font-semibold text-blue-800 dark:text-blue-300">Explanation</h4>
-                                        <p className="text-muted-foreground text-sm text-blue-700 dark:text-blue-400">{question.explanation}</p>
+                                        <p className="text-sm text-blue-700 dark:text-blue-400">{question.explanation}</p>
                                     </div>
                                 </div>
                             </AccordionContent>

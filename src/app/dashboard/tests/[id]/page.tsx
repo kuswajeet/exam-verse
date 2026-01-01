@@ -12,7 +12,7 @@ import { ArrowLeft, ArrowRight, Check, Clock } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useUser, useFirestore, useDoc, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import type { Test, TestAttempt } from '@/lib/types';
-import { doc, collection } from 'firebase/firestore';
+import { doc, collection, serverTimestamp } from 'firebase/firestore';
 
 export default function TestTakerPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -26,37 +26,8 @@ export default function TestTakerPage({ params }: { params: { id: string } }) {
   const [userAnswers, setUserAnswers] = useState<Record<string, number>>({});
   const [timeLeft, setTimeLeft] = useState(test ? test.durationMinutes * 60 : 0);
   
-  useEffect(() => {
-    if (!test || timeLeft <= 0) {
-      return;
-    }
-    const timer = setInterval(() => {
-      setTimeLeft(prevTime => {
-        if (prevTime <= 1) {
-          clearInterval(timer);
-          finishTest();
-          return 0;
-        }
-        return prevTime - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [test, timeLeft]);
-
-  if (!test) {
-    notFound();
-  }
-
-  const currentQuestion = test.questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex) / test.questions.length) * 100;
-
-  const handleAnswerSelect = (questionId: string, optionIndex: number) => {
-    setUserAnswers(prev => ({ ...prev, [questionId]: optionIndex }));
-  };
-  
-  const finishTest = () => {
-    if (!user || !firestore) return;
+  const finishTest = async () => {
+    if (!user || !firestore || !test) return;
 
     const score = Object.keys(userAnswers).reduce((acc, qId) => {
       const question = test.questions.find(q => q.id === qId);
@@ -66,22 +37,68 @@ export default function TestTakerPage({ params }: { params: { id: string } }) {
       return acc;
     }, 0);
     
-    const attemptId = `attempt-${user.uid}-${test.id}-${Date.now()}`;
     const resultsCollection = collection(firestore, 'users', user.uid, 'results');
     
-    const attemptData: Omit<TestAttempt, 'id'> = {
+    const attemptData: Omit<TestAttempt, 'id' | 'completedAt'> & { completedAt: any } = {
       userId: user.uid,
       testId: test.id,
       testTitle: test.title,
       answers: userAnswers,
       score: score,
       totalQuestions: test.questions.length,
-      completedAt: new Date(),
+      completedAt: serverTimestamp(),
     };
 
-    addDocumentNonBlocking(resultsCollection, attemptData);
-    router.push(`/dashboard/results`);
+    try {
+      const docRef = await addDocumentNonBlocking(resultsCollection, attemptData);
+      // addDocumentNonBlocking returns a promise that resolves with the doc ref on success.
+      if (docRef) {
+        router.push(`/dashboard/results/${docRef.id}`);
+      } else {
+        // Fallback in case docRef is not returned, though it should be.
+        // This is less ideal as it doesn't lead to the specific result.
+        router.push(`/dashboard/results`);
+      }
+    } catch (error) {
+        // If addDocumentNonBlocking was changed to throw, this would catch it.
+        // But with the current non-blocking setup, errors are emitted globally.
+        // We can still push the user away from the test page on any submission attempt.
+        console.error("Submission failed, navigating to results page.");
+        router.push(`/dashboard/results`);
+    }
   }
+
+  useEffect(() => {
+    if (!test || timeLeft <= 0) {
+        if(timeLeft <= 0) {
+            finishTest();
+        }
+      return;
+    }
+    const timer = setInterval(() => {
+      setTimeLeft(prevTime => {
+        if (prevTime <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test, timeLeft]);
+
+  if (!test) {
+    notFound();
+  }
+
+  const currentQuestion = test.questions[currentQuestionIndex];
+  const progress = ((currentQuestionIndex + 1) / test.questions.length) * 100;
+
+  const handleAnswerSelect = (questionId: string, optionIndex: number) => {
+    setUserAnswers(prev => ({ ...prev, [questionId]: optionIndex }));
+  };
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
