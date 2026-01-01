@@ -9,6 +9,7 @@ import {
   GraduationCap,
   FlaskConical,
   Upload,
+  Settings,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -19,14 +20,21 @@ import { AppLogo } from "../icons";
 const navItems = [
   { href: "/dashboard", icon: Home, label: "Overview" },
   { href: "/dashboard/tests", icon: BookCopy, label: "Tests" },
-  { href: "/dashboard/results", icon: GraduationCap, label: "Results", badge: "3" },
-  { href: "/dashboard/analytics", icon: LineChart, label: "Analytics" },
-  { href: "/admin/manage-users", icon: Users, label: "Manage Users" },
-  { href: "/admin/generate-question", icon: FlaskConical, label: "AI Generator" },
-  { href: "/admin/upload-questions", icon: Upload, label: "Bulk Upload" },
+  { href: "/dashboard/results", icon: GraduationCap, label: "Results" },
+  { href: "/dashboard/analytics", icon: LineChart, label: "Analytics", disabled: true },
+  { href: "/dashboard/settings", icon: Settings, label: "My Profile" },
 ];
 
+const adminNavItems = [
+    { href: "/admin/manage-users", icon: Users, label: "Manage Users" },
+    { href: "/admin/generate-question", icon: FlaskConical, label: "AI Generator" },
+    { href: "/admin/upload-questions", icon: Upload, label: "Bulk Upload" },
+]
+
 export function DashboardSidebar() {
+  // In a real app, you'd get the user's role from your auth context
+  const userRole = "student"; 
+
   return (
     <div className="hidden border-r bg-card md:block">
       <div className="flex h-full max-h-screen flex-col gap-2">
@@ -41,18 +49,32 @@ export function DashboardSidebar() {
             {navItems.map((item) => (
               <Link
                 key={item.label}
-                href={item.href}
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted"
+                href={item.disabled ? "#" : item.href}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted ${item.disabled ? "cursor-not-allowed opacity-50" : ""}`}
               >
                 <item.icon className="h-4 w-4" />
                 {item.label}
-                {item.badge && (
-                  <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
-                    {item.badge}
-                  </Badge>
-                )}
               </Link>
             ))}
+
+            {/* Admin Section */}
+            {userRole === 'admin' && (
+                <>
+                    <div className="my-2 mx-4 border-t" />
+                     <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Admin</p>
+                    {adminNavItems.map((item) => (
+                        <Link
+                            key={item.label}
+                            href={item.href}
+                            className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted"
+                        >
+                            <item.icon className="h-4 w-4" />
+                            {item.label}
+                        </Link>
+                    ))}
+                </>
+            )}
+
           </nav>
         </div>
         <div className="mt-auto p-4">
@@ -74,3 +96,5 @@ export function DashboardSidebar() {
     </div>
   );
 }
+
+    

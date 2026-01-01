@@ -1,3 +1,5 @@
+'use client';
+
 import Link from "next/link";
 import {
   CircleUser,
@@ -6,6 +8,7 @@ import {
   FlaskConical,
   Upload,
   Users,
+  LogOut,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -28,9 +31,26 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { AppLogo } from "../icons";
 import Image from "next/image";
-import { mockUser } from "@/lib/placeholder-data";
+import { useAuth, useUser } from "@/firebase";
+import { Skeleton } from "../ui/skeleton";
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
 
 export function DashboardHeader() {
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      // The AuthWrapper will handle redirecting to the login page
+      router.push('/login');
+    } catch (error) {
+      console.error("Error signing out: ", error);
+    }
+  };
+
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
       <Sheet>
@@ -123,8 +143,10 @@ export function DashboardHeader() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="secondary" size="icon" className="rounded-full">
-            {mockUser.avatarUrl ? (
-                <Image src={mockUser.avatarUrl} width={36} height={36} alt="User avatar" className="rounded-full" />
+            {isUserLoading ? (
+                <Skeleton className="h-8 w-8 rounded-full" />
+            ) : user?.photoURL ? (
+                <Image src={user.photoURL} width={36} height={36} alt="User avatar" className="rounded-full" />
             ) : (
                 <CircleUser className="h-5 w-5" />
             )}
@@ -134,12 +156,19 @@ export function DashboardHeader() {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Settings</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/dashboard/settings">My Profile</Link>
+          </DropdownMenuItem>
           <DropdownMenuItem>Support</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Logout</DropdownMenuItem>
+          <DropdownMenuItem onClick={handleLogout} className="text-red-500 focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-900/40">
+            <LogOut className="mr-2 h-4 w-4"/>
+            Logout
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
   );
 }
+
+    
