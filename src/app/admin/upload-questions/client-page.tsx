@@ -115,11 +115,11 @@ export function UploadQuestionsClientPage() {
                 examName: row.ExamName || examName || "General",
                 subject: row.Subject || subject || "General",
                 topic: row.Topic,
-                subTopic: row.SubTopic,
+                subTopic: row.SubTopic || null,
                 difficulty: difficulty,
                 questionType: 'single_choice',
-                previousYear: row.PreviousYear || previousYear,
-                sourceExamName: row.SourceExamName || sourceExamName,
+                previousYear: row.PreviousYear || previousYear || null,
+                sourceExamName: row.SourceExamName || sourceExamName || null,
             };
         });
 
@@ -206,18 +206,15 @@ export function UploadQuestionsClientPage() {
                 </Select>
               </div>
             </div>
-             <div className="grid md:grid-cols-3 gap-4">
+             <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label htmlFor="previousYear">Previous Year (Optional)</Label>
+                    <Label htmlFor="previousYear">Previous Year (Optional Fallback)</Label>
                     <Input id="previousYear" name="previousYear" placeholder="e.g., 2023" />
                 </div>
                  <div className="space-y-2">
-                    <Label htmlFor="sourceExamName">Source Exam Name (Optional)</Label>
+                    <Label htmlFor="sourceExamName">Source Exam Name (Optional Fallback)</Label>
+
                     <Input id="sourceExamName" name="sourceExamName" placeholder="e.g., JEE Advanced" />
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="subTopic">Sub-Topic (Optional)</Label>
-                    <Input id="subTopic" name="subTopic" placeholder="e.g., Kinematics" />
                 </div>
              </div>
             <div className="space-y-2">
