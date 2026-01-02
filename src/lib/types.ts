@@ -58,6 +58,8 @@ export interface TestAttempt {
   testId: string;
   testTitle: string;
   testType?: 'exam' | 'quiz';
+  category?: string;
+  examName?: string;
   answers: { [questionId: string]: number };
   score: number;
   totalQuestions: number;

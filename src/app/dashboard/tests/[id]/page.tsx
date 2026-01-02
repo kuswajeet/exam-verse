@@ -104,6 +104,8 @@ export default function TestTakerPage(props: { params: Promise<{ id: string }> }
       testId: test.id,
       testTitle: test.title,
       testType: test.testType || 'exam',
+      category: test.category || 'General',
+      examName: test.examName || 'General',
       answers: userAnswers,
       score: score,
       totalQuestions: test.questions.length,
