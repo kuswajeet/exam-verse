@@ -18,6 +18,7 @@ import {
   BookOpen,
   Zap,
   Clock,
+  TestTube,
 } from "lucide-react";
 import { usePathname } from 'next/navigation';
 
@@ -42,7 +43,7 @@ const navItems = [
 
 const practiceNavItems = [
     { href: "/dashboard/practice/oneliners", icon: Zap, label: "One Liners" },
-    { href: "/dashboard/practice/daily-quiz", icon: Clock, label: "Daily Quiz" },
+    { href: "/dashboard/practice/quizzes", icon: TestTube, label: "Quizzes" },
 ]
 
 const profileNavItems = [
