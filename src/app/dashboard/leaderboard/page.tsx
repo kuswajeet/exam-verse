@@ -20,9 +20,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, limit, where, Query } from "firebase/firestore";
+import { collection, query, orderBy, limit } from "firebase/firestore";
 import type { TestAttempt } from "@/lib/types";
-import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 
@@ -35,24 +34,30 @@ export default function LeaderboardPage() {
   const [filterType, setFilterType] = useState('all'); // 'all', 'exam', 'quiz'
   const [filterCategory, setFilterCategory] = useState('all');
 
+  // 1. Fetch a broader set of top results from Firestore.
   const leaderboardQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    
-    let q: Query = collection(firestore, 'results');
-
-    if (filterType !== 'all') {
-      q = query(q, where('testType', '==', filterType));
-    }
-    if (filterCategory !== 'all') {
-      q = query(q, where('category', '==', filterCategory));
-    }
-
-    q = query(q, orderBy('score', 'desc'), limit(10));
-    
-    return q;
-  }, [firestore, filterType, filterCategory]);
+    // Fetch top 20 scores overall to allow for client-side filtering.
+    return query(collection(firestore, 'results'), orderBy('score', 'desc'), limit(20));
+  }, [firestore]);
   
-  const { data: attempts, isLoading } = useCollection<TestAttempt>(leaderboardQuery);
+  const { data: allTopAttempts, isLoading } = useCollection<TestAttempt>(leaderboardQuery);
+
+  // 2. Apply client-side filtering based on state.
+  const filteredAndSortedAttempts = useMemo(() => {
+    if (!allTopAttempts) return [];
+
+    const filtered = allTopAttempts.filter(attempt => {
+        const typeMatch = filterType === 'all' || attempt.testType === filterType;
+        const categoryMatch = filterCategory === 'all' || attempt.category === filterCategory;
+        return typeMatch && categoryMatch;
+    });
+
+    // The data is already sorted by score from Firestore, so we just need to take the top 10.
+    return filtered.slice(0, 10);
+
+  }, [allTopAttempts, filterType, filterCategory]);
+
 
   const getMedal = (rank: number) => {
     if (rank === 1) return '🥇';
@@ -82,7 +87,7 @@ export default function LeaderboardPage() {
                     <span role="img" aria-label="Trophy">🏆</span> Hall of Fame
                 </CardTitle>
                 <CardDescription>
-                See how you stack up against the competition. This is the top 10 leaderboard.
+                See how you stack up against the competition. This is the top 10 leaderboard based on your filters.
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col md:flex-row gap-4">
@@ -133,15 +138,15 @@ export default function LeaderboardPage() {
                             <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                             <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
                             </TableRow>
-                    ))) : attempts && attempts.length > 0 ? (
-                    attempts.map((attempt, index) => {
+                    ))) : filteredAndSortedAttempts && filteredAndSortedAttempts.length > 0 ? (
+                    filteredAndSortedAttempts.map((attempt, index) => {
                         const rank = index + 1;
                         const isCurrentUser = user?.uid === attempt.userId;
 
                         return (
                             <TableRow key={attempt.id} className={getRowClass(rank, isCurrentUser)}>
                                 <TableCell className="font-bold text-lg">{getMedal(rank)}</TableCell>
-                                <TableCell className="font-medium">{attempt.studentName}</TableCell>
+                                <TableCell className="font-medium">{attempt.studentName || 'Anonymous Student'}</TableCell>
                                 <TableCell>{attempt.testTitle}</TableCell>
                                 <TableCell className="capitalize">{attempt.category}</TableCell>
                                 <TableCell className="capitalize">{attempt.testType}</TableCell>
