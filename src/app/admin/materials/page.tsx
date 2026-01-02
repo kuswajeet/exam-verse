@@ -10,7 +10,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, addDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import type { Material } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -223,5 +224,3 @@ export default function ManageMaterialsPage() {
     </div>
   );
 }
-
-    

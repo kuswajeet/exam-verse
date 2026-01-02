@@ -19,7 +19,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from '@/components/ui/skeleton';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider";
+import { useCollection } from "@/firebase/firestore/use-collection";
 import { collection, query, orderBy, limit } from "firebase/firestore";
 import type { TestAttempt } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

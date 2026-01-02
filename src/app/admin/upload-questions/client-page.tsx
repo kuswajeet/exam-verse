@@ -19,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Papa from "papaparse";
-import { useFirestore } from "@/firebase";
+import { useFirestore } from "@/firebase/provider";
 import { collection, doc, writeBatch } from "firebase/firestore";
 import type { Question } from "@/lib/types";
 

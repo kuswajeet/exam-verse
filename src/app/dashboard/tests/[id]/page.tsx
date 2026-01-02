@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase/provider';
 import type { Test, Question, TestWithQuestions } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';

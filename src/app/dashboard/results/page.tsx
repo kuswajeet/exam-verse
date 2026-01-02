@@ -18,7 +18,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider";
+import { useCollection } from "@/firebase/firestore/use-collection";
 import { collection, query, where } from "firebase/firestore";
 import type { TestAttempt } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";

@@ -28,7 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppLogo } from "../icons";
-import { useUser, useDoc, useMemoFirebase, useFirestore } from "@/firebase";
+import { useUser, useDoc, useMemoFirebase, useFirestore } from "@/firebase/provider";
 import type { User as AppUser } from "@/lib/types";
 import { doc } from "firebase/firestore";
 import { cn } from "@/lib/utils";

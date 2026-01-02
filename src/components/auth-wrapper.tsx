@@ -1,12 +1,11 @@
 'use client';
 
-import { useUser, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useDoc, useMemoFirebase, useFirestore } from '@/firebase/provider';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { doc } from 'firebase/firestore';
 import type { User as AppUser } from '@/lib/types';
 import { Skeleton } from './ui/skeleton';
-import { useFirestore } from '@/firebase';
 
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();

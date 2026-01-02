@@ -1,10 +1,19 @@
-import { initializeFirebase } from "./index";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Initialize the app using the shared logic
-const app = initializeFirebase();
+// HARDCODED CONFIGURATION (To fix invalid-api-key error)
+const firebaseConfig = {
+    apiKey: "AIzaSy...", // User will paste real API Key here
+    authDomain: "verse-exam-prep.firebaseapp.com",
+    projectId: "verse-exam-prep",
+    storageBucket: "verse-exam-prep.appspot.com",
+    messagingSenderId: "SENDER_ID",
+    appId: "APP_ID"
+};
 
-// Export the instances for use in pages
+// Initialize App (Singleton)
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+
 export const auth = getAuth(app);
 export const db = getFirestore(app);

@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useUser, useDoc, useMemoFirebase, useFirestore } from "@/firebase";
+import { useUser, useDoc, useMemoFirebase, useFirestore } from "@/firebase/provider";
 import { doc, updateDoc } from "firebase/firestore";
 import type { User as AppUser } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";

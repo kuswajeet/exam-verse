@@ -31,7 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AppLogo } from "../icons";
 import Image from "next/image";
-import { useAuth, useUser } from "@/firebase";
+import { useAuth, useUser } from "@/firebase/provider";
 import { Skeleton } from "../ui/skeleton";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";

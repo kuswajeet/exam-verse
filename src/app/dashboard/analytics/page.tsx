@@ -19,7 +19,8 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider";
+import { useCollection } from "@/firebase/firestore/use-collection";
 import { collection, query, where, orderBy } from "firebase/firestore";
 import type { TestAttempt } from "@/lib/types";
 import { Skeleton } from '@/components/ui/skeleton';

@@ -11,7 +11,8 @@ import {
   CardTitle,
   CardFooter
 } from "@/components/ui/card";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useMemoFirebase } from "@/firebase/provider";
+import { useCollection } from "@/firebase/firestore/use-collection";
 import type { Test } from "@/lib/types";
 import { collection, query, where } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";

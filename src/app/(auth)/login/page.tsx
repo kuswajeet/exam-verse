@@ -8,7 +8,8 @@ import * as z from "zod";
 import { Loader2, Terminal } from "lucide-react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 
-import { useAuth } from "@/firebase";
+// CRITICAL FIX: Import 'auth' from the correct client file
+import { auth } from "@/firebase/client";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +32,6 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const router = useRouter();
-  const auth = useAuth();
   const [loading, setLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -47,17 +47,21 @@ export default function LoginPage() {
     setLoading(true);
     setAuthError(null);
     try {
+      // Debug: Check if auth is loaded
       if (!auth) {
         throw new Error("Firebase Auth is not initialized. Please refresh the page.");
       }
+      
+      console.log("Auth Object:", auth); // Debug log
 
       await signInWithEmailAndPassword(auth, values.email, values.password);
       
+      // Redirect on success
       router.push('/dashboard');
     } catch (error: any) {
       console.error("Login Error:", error);
       let msg = "Failed to sign in.";
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
         msg = "Invalid email or password.";
       } else if (error.message) {
         msg = error.message;
@@ -69,12 +73,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex h-screen w-full items-center justify-center px-4 bg-background">
+    <div className="flex h-screen w-full items-center justify-center px-4 bg-gray-50">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
-            Enter your email below to login to your account.
+            Enter your email below to login.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -108,7 +112,7 @@ export default function LoginPage() {
                   <FormItem>
                     <div className="flex items-center justify-between">
                       <FormLabel>Password</FormLabel>
-                      <Link href="#" className="text-sm text-primary hover:underline">Forgot password?</Link>
+                      <Link href="#" className="text-sm underline">Forgot password?</Link>
                     </div>
                     <FormControl>
                       <Input type="password" {...field} />
@@ -124,9 +128,9 @@ export default function LoginPage() {
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex-col items-start gap-4">
-            <div className="text-center w-full text-sm text-muted-foreground">
-                Don't have an account? <Link href="/signup" className="text-primary hover:underline font-semibold">Sign up</Link>
+        <CardFooter className="flex justify-center">
+            <div className="text-sm text-muted-foreground">
+                No account? <Link href="/signup" className="text-primary hover:underline">Sign up</Link>
             </div>
         </CardFooter>
       </Card>
