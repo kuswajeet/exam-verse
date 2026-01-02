@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -23,6 +24,7 @@ export default function StudyMaterialsPage() {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedNote, setSelectedNote] = useState<Material | null>(null);
+  const [selectedPdfUrl, setSelectedPdfUrl] = useState<string | null>(null);
   
   const materialsQuery = useMemoFirebase(() => 
     firestore ? query(collection(firestore, 'materials'), orderBy('createdAt', 'desc')) : null, 
@@ -44,6 +46,21 @@ export default function StudyMaterialsPage() {
       return subjectMatch && searchMatch;
     }) ?? [];
   }, [materials, activeSubject, searchTerm]);
+
+  const getEmbeddablePdfUrl = (url: string) => {
+    let embedUrl = url;
+    if (url.includes("drive.google.com")) {
+      embedUrl = url.replace("/view", "/preview");
+    } else {
+      embedUrl = `${url}#toolbar=0&navpanes=0&scrollbar=0`;
+    }
+    return embedUrl;
+  };
+
+  const openPdfModal = (url: string) => {
+    setSelectedPdfUrl(getEmbeddablePdfUrl(url));
+  };
+
 
   return (
     <div className="space-y-6">
@@ -92,14 +109,12 @@ export default function StudyMaterialsPage() {
                     </CardHeader>
                     <CardContent className="flex-grow">
                         <p className="text-sm text-muted-foreground line-clamp-3">
-                            {material.type === 'PDF' ? 'This is a PDF document. Click to open in a new tab.' : material.content}
+                            {material.type === 'PDF' ? 'This is a PDF document. Click to open.' : material.content}
                         </p>
                     </CardContent>
                     <CardFooter>
                          {material.type === 'PDF' ? (
-                            <Button asChild className="w-full">
-                                <a href={material.content} target="_blank" rel="noopener noreferrer">Open PDF</a>
-                            </Button>
+                            <Button className="w-full" onClick={() => openPdfModal(material.content)}>Open PDF</Button>
                          ) : (
                              <DialogTrigger asChild>
                                 <Button variant="outline" className="w-full" onClick={() => setSelectedNote(material)}>Read Note</Button>
@@ -132,8 +147,18 @@ export default function StudyMaterialsPage() {
         </Dialog>
       )}
 
+      {selectedPdfUrl && (
+        <Dialog open={!!selectedPdfUrl} onOpenChange={(open) => !open && setSelectedPdfUrl(null)}>
+            <DialogContent className="max-w-none w-[90vw] h-[90vh] p-2">
+                <iframe
+                    src={selectedPdfUrl}
+                    className="w-full h-full border-0"
+                    title="PDF Viewer"
+                />
+            </DialogContent>
+        </Dialog>
+      )}
+
     </div>
   );
 }
-
-    
