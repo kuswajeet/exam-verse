@@ -1,183 +1,139 @@
-
-
 'use client';
 
-import Link from "next/link";
-import {
-  Bell,
-  Home,
-  Package2,
-  Users,
-  LineChart,
-  BookCopy,
-  GraduationCap,
-  FlaskConical,
-  Upload,
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/firebase/index'; 
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { 
+  LayoutDashboard, 
+  BookOpen, 
+  Trophy, 
+  BarChart, 
+  LogOut, 
   Settings,
+  Users,
+  FileText,
   PlusCircle,
-  Trophy,
-  BookOpen,
+  BrainCircuit,
+  UploadCloud,
+  Library,
   Zap,
-  Clock,
-  TestTube,
-  BookMarked,
-} from "lucide-react";
-import { usePathname } from 'next/navigation';
-
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AppLogo } from "../icons";
-import { useUser, useDoc, useMemoFirebase, useFirestore } from "@/firebase/provider";
-import type { User as AppUser } from "@/lib/types";
-import { doc } from "firebase/firestore";
-import { cn } from "@/lib/utils";
-
-
-const navItems = [
-  { href: "/dashboard", icon: Home, label: "Overview" },
-  { href: "/dashboard/tests", icon: BookCopy, label: "Tests" },
-  { href: "/dashboard/results", icon: GraduationCap, label: "Results" },
-  { href: "/dashboard/leaderboard", icon: Trophy, label: "Leaderboard" },
-  { href: "/dashboard/analytics", icon: LineChart, label: "Analytics" },
-  { href: "/dashboard/materials", icon: BookOpen, label: "Study Materials" },
-];
-
-const practiceNavItems = [
-    { href: "/dashboard/practice/oneliners", icon: Zap, label: "One Liners" },
-    { href: "/dashboard/practice/quizzes", icon: TestTube, label: "Quizzes" },
-]
-
-const profileNavItems = [
-    { href: "/dashboard/settings", icon: Settings, label: "My Profile" },
-]
-
-
-const adminNavItems = [
-    { href: "/admin/manage-users", icon: Users, label: "Manage Users" },
-    { href: "/admin/questions", icon: BookMarked, label: "Manage Questions" },
-    { href: "/admin/create-test", icon: PlusCircle, label: "Create Test" },
-    { href: "/admin/generate-question", icon: FlaskConical, label: "AI Generator" },
-    { href: "/admin/upload-questions", icon: Upload, label: "Bulk Upload" },
-    { href: "/admin/materials", icon: BookOpen, label: "Manage Materials" },
-]
+  Sparkles
+} from 'lucide-react';
 
 export function DashboardSidebar() {
-  const { user } = useUser();
-  const firestore = useFirestore();
   const pathname = usePathname();
+  const router = useRouter();
 
-  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: userProfile } = useDoc<AppUser>(userDocRef);
-  
-  const userRole = userProfile?.role; 
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
+  };
+
+  const menuGroups = [
+    {
+      label: "Main",
+      items: [
+        { name: 'Tests', href: '/dashboard/tests', icon: BookOpen },
+        { name: 'My Results', href: '/dashboard/results', icon: BarChart },
+        { name: 'Leaderboard', href: '/dashboard/leaderboard', icon: Trophy },
+        { name: 'Analytics', href: '/dashboard/analytics', icon: BrainCircuit },
+        { name: 'Study Materials', href: '/dashboard/materials', icon: Library },
+      ]
+    },
+    {
+      label: "Practice",
+      items: [
+        { name: 'One Liners', href: '/dashboard/practice/oneliners', icon: Zap },
+        { name: 'Quizzes', href: '/dashboard/practice/quizzes', icon: FileText },
+      ]
+    },
+    {
+      label: "Admin Console", 
+      items: [
+        { name: 'Manage Users', href: '/dashboard/admin/users', icon: Users },
+        { name: 'Manage Questions', href: '/admin/questions', icon: FileText },
+        { name: 'Create Test', href: '/dashboard/admin/create', icon: PlusCircle },
+        { name: 'AI Generator', href: '/admin/generate-question', icon: Sparkles },
+        { name: 'Bulk Upload', href: '/admin/upload-questions', icon: UploadCloud },
+        { name: 'Manage Materials', href: '/admin/materials', icon: Library },
+      ]
+    }
+  ];
 
   return (
-    <div className="hidden border-r bg-card md:block">
-      <div className="flex h-full max-h-screen flex-col gap-2">
-        <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-          <Link href="/" className="flex items-center gap-2 font-semibold">
-            <AppLogo className="h-6 w-6 text-primary" />
-            <span className="font-headline">Verse Exam Prep</span>
-          </Link>
-        </div>
-        <div className="flex-1">
-          <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={cn(
-                    `flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted`,
-                    isActive && 'bg-muted text-primary'
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            )})}
-            
-            {/* Practice Section */}
-            <div className="my-2 mx-4 border-t" />
-            <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Practice</p>
-            {practiceNavItems.map((item) => {
-                const isActive = pathname.startsWith(item.href);
-                return (
-                <Link
-                    key={item.label}
-                    href={item.href}
-                    className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted",
-                        isActive && 'bg-muted text-primary'
-                    )}
-                >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                </Link>
-            )})}
+    <div className="hidden h-full min-h-screen w-72 flex-col border-r bg-card md:flex">
+      {/* Header */}
+      <div className="flex h-16 items-center border-b px-6">
+        <Link href="/" className="flex items-center gap-2 font-semibold">
+            <Sparkles className="h-6 w-6 text-primary" />
+            <span className="text-lg">Verse Exam Prep</span>
+        </Link>
+      </div>
 
-             {/* Profile Section */}
-             <div className="my-2 mx-4 border-t" />
-             {profileNavItems.map((item) => {
-              const isActive = pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted",
-                    isActive && 'bg-muted text-primary'
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              )
-            })}
+      {/* Scrollable Navigation */}
+      <div className="flex-1 overflow-y-auto py-4">
+        <nav className="flex flex-col gap-6 px-4">
+          {menuGroups.map((group, groupIndex) => (
+            <div key={groupIndex}>
+              <h3 className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {group.label}
+              </h3>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+                        isActive 
+                          ? "bg-primary text-primary-foreground" 
+                          : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          
+          {/* Settings Section (Separate) */}
+          <div className="mt-2 pt-2 border-t">
+            <Link
+              href="/dashboard/settings"
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground",
+                pathname === "/dashboard/settings" && "bg-secondary text-foreground"
+              )}
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </Link>
+          </div>
+        </nav>
+      </div>
 
-
-            {/* Admin Section */}
-            {userRole === 'admin' && (
-                <>
-                    <div className="my-2 mx-4 border-t" />
-                     <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Admin</p>
-                    {adminNavItems.map((item) => {
-                       const isActive = pathname.startsWith(item.href);
-                       return (
-                        <Link
-                            key={item.label}
-                            href={item.href}
-                            className={cn(
-                                "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted",
-                                isActive && 'bg-muted text-primary'
-                            )}
-                        >
-                            <item.icon className="h-4 w-4" />
-                            {item.label}
-                        </Link>
-                    )})}
-                </>
-            )}
-
-          </nav>
-        </div>
-        <div className="mt-auto p-4">
-          <Card>
-            <CardHeader className="p-2 pt-0 md:p-4">
-              <CardTitle>Upgrade to Pro</CardTitle>
-              <CardDescription>
-                Unlock all features and get unlimited access to our support team.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-2 pt-0 md:p-4 md:pt-0">
-              <Button size="sm" className="w-full">
-                Upgrade
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Footer / Logout */}
+      <div className="border-t p-4">
+        <Button 
+          variant="ghost" 
+          className="w-full justify-start gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive" 
+          onClick={handleLogout}
+        >
+          <LogOut size={16} />
+          <span>Log Out</span>
+        </Button>
       </div>
     </div>
   );
