@@ -19,7 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collectionGroup, query, orderBy, limit } from "firebase/firestore";
+import { collection, query, orderBy, limit } from "firebase/firestore";
 import type { TestAttempt } from "@/lib/types";
 import { cn } from '@/lib/utils';
 
@@ -27,11 +27,11 @@ export default function LeaderboardPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // Query the 'results' collection group across all users
+  // Query the root 'results' collection
   const leaderboardQuery = useMemoFirebase(
     () => (firestore 
         ? query(
-            collectionGroup(firestore, 'results'), 
+            collection(firestore, 'results'), 
             orderBy('score', 'desc'),
             limit(20)
           ) 

@@ -82,7 +82,7 @@ export default function TestTakerPage(props: { params: Promise<{ id: string }> }
       return acc;
     }, 0);
     
-    const resultsCollection = collection(firestore, 'users', user.uid, 'results');
+    const resultsCollection = collection(firestore, 'results');
     
     const attemptData: Omit<TestAttempt, 'id'> & { completedAt: any } = {
       userId: user.uid,

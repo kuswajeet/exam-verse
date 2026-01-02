@@ -62,8 +62,8 @@ export default function ResultDetailPage(props: { params: Promise<{ id: string }
   const [isLoadingTest, setIsLoadingTest] = React.useState(true);
 
   const resultDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, `users/${user.uid}/results`, id) : null),
-    [user, firestore, id]
+    () => (firestore ? doc(firestore, `results`, id) : null),
+    [firestore, id]
   );
   
   const { data: attempt, isLoading: isLoadingAttempt } = useDoc<TestAttempt>(resultDocRef);
