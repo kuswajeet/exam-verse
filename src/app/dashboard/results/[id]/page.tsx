@@ -1,39 +1,54 @@
 'use client';
 
-import { notFound, useRouter } from "next/navigation";
+import { use } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { CheckCircle2, XCircle, AlertCircle, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
-import { doc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, collection, query, where, getDocs, getDoc } from "firebase/firestore";
 import type { TestAttempt, Question, TestWithQuestions, Test } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import React, { use } from "react";
+import React from "react";
 
 async function getTestWithQuestions(firestore: any, testId: string): Promise<TestWithQuestions | null> {
     const testRef = doc(firestore, 'tests', testId);
-    const testSnapshot = await getDocs(query(collection(firestore, 'tests'), where('__name__', '==', testId)));
+    const testSnapshot = await getDoc(testRef);
     
-    if (testSnapshot.empty) {
+    if (!testSnapshot.exists()) {
         return null;
     }
 
-    const testData = { id: testSnapshot.docs[0].id, ...testSnapshot.docs[0].data() } as Test;
+    const testData = { id: testSnapshot.id, ...testSnapshot.data() } as Test;
     
     if (!testData.questionIds || testData.questionIds.length === 0) {
         return { ...testData, questions: [] };
     }
     
     // Firestore 'in' queries are limited to 30 elements. 
-    // If a test can have more, this needs to be chunked.
-    const questionsQuery = query(collection(firestore, 'questions'), where('__name__', 'in', testData.questionIds));
-    const questionsSnapshot = await getDocs(questionsQuery);
+    // We need to chunk the requests if there are more.
+    const questionChunks: string[][] = [];
+    for (let i = 0; i < testData.questionIds.length; i += 30) {
+        questionChunks.push(testData.questionIds.slice(i, i + 30));
+    }
+    
+    const questionPromises = questionChunks.map(chunk => 
+        getDocs(query(collection(firestore, 'questions'), where('__name__', 'in', chunk)))
+    );
+
+    const questionSnapshots = await Promise.all(questionPromises);
+
+    const questionsMap = new Map<string, Question>();
+    questionSnapshots.forEach(snapshot => {
+        snapshot.docs.forEach(doc => {
+            questionsMap.set(doc.id, { id: doc.id, ...doc.data() } as Question);
+        });
+    });
 
     // This ensures question order is preserved from the test document
-    const questionsMap = new Map(questionsSnapshot.docs.map(doc => [doc.id, { id: doc.id, ...doc.data() } as Question]));
     const questions = testData.questionIds.map(id => questionsMap.get(id)).filter((q): q is Question => !!q);
     
     return { ...testData, questions };
@@ -74,7 +89,8 @@ export default function ResultDetailPage(props: { params: Promise<{ id: string }
                     <Skeleton className="h-8 w-3/4" />
                     <Skeleton className="h-4 w-1/2" />
                 </CardHeader>
-                <CardContent className="grid gap-6 md:grid-cols-3">
+                <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                    <Skeleton className="h-24 w-full" />
                     <Skeleton className="h-24 w-full" />
                     <Skeleton className="h-24 w-full" />
                     <Skeleton className="h-24 w-full" />
