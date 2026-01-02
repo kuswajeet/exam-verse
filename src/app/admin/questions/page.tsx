@@ -111,9 +111,9 @@ export default function ManageQuestionsPage() {
     const difficultySet = new Set<string>();
     const typeSet = new Set<string>();
     allQuestions.forEach(q => {
-      topicSet.add(q.topic);
-      difficultySet.add(q.difficulty);
-      typeSet.add(q.questionType);
+      if(q.topic) topicSet.add(q.topic);
+      if(q.difficulty) difficultySet.add(q.difficulty);
+      if(q.questionType) typeSet.add(q.questionType);
     });
     return { 
       topics: ['all', ...Array.from(topicSet).sort()],
@@ -250,23 +250,23 @@ export default function ManageQuestionsPage() {
             <div className="flex gap-2">
                 {selectedIds.size > 0 && (
                     <Button variant="destructive" onClick={handleDeleteSelected}>
-                        <Trash2 className="mr-2" /> Delete Selected ({selectedIds.size})
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete Selected ({selectedIds.size})
                     </Button>
                 )}
                  <Button onClick={handleSeedData} disabled={isSeeding}>
-                  {isSeeding ? <Loader className="mr-2 animate-spin" /> : <Zap className="mr-2" />}
+                  {isSeeding ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
                   Add Sample Data
                 </Button>
             </div>
         </div>
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="relative lg:col-span-2">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search by question text..." className="pl-8" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             </div>
-            <Select value={filters.topic} onValueChange={(v) => handleFilterChange('topic', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{topics.map(t => <SelectItem key={t} value={t} className="capitalize">{t === 'all' ? 'All Topics' : t}</SelectItem>)}</SelectContent></Select>
-            <Select value={filters.difficulty} onValueChange={(v) => handleFilterChange('difficulty', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{difficulties.map(d => <SelectItem key={d} value={d} className="capitalize">{d === 'all' ? 'All Difficulties' : d}</SelectItem>)}</SelectContent></Select>
-            <Select value={filters.type} onValueChange={(v) => handleFilterChange('type', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{types.map(t => <SelectItem key={t} value={t} className="capitalize">{t === 'all' ? 'All Types' : t}</SelectItem>)}</SelectContent></Select>
+            <Select value={filters.topic} onValueChange={(v) => handleFilterChange('topic', v)}><SelectTrigger><SelectValue placeholder="All Topics"/></SelectTrigger><SelectContent>{topics.map(t => <SelectItem key={t} value={t} className="capitalize">{t === 'all' ? 'All Topics' : t}</SelectItem>)}</SelectContent></Select>
+            <Select value={filters.difficulty} onValueChange={(v) => handleFilterChange('difficulty', v)}><SelectTrigger><SelectValue placeholder="All Difficulties"/></SelectTrigger><SelectContent>{difficulties.map(d => <SelectItem key={d} value={d} className="capitalize">{d === 'all' ? 'All Difficulties' : d}</SelectItem>)}</SelectContent></Select>
+            <Select value={filters.type} onValueChange={(v) => handleFilterChange('type', v)}><SelectTrigger><SelectValue placeholder="All Types"/></SelectTrigger><SelectContent>{types.map(t => <SelectItem key={t} value={t} className="capitalize">{t === 'all' ? 'All Types' : t}</SelectItem>)}</SelectContent></Select>
         </div>
          { (searchTerm || filters.topic !== 'all' || filters.difficulty !== 'all' || filters.type !== 'all') && (
             <Button variant="ghost" size="sm" onClick={resetFilters} className="mt-4"><X className="mr-2 h-4 w-4"/>Clear Filters</Button>
@@ -395,5 +395,3 @@ export default function ManageQuestionsPage() {
     </Card>
   );
 }
-
-    
