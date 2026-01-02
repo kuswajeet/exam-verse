@@ -23,8 +23,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 export default function StudyMaterialsPage() {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedNote, setSelectedNote] = useState<Material | null>(null);
-  const [selectedPdfUrl, setSelectedPdfUrl] = useState<string | null>(null);
+  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   
   const materialsQuery = useMemoFirebase(() => 
     firestore ? query(collection(firestore, 'materials'), orderBy('createdAt', 'desc')) : null, 
@@ -48,19 +47,11 @@ export default function StudyMaterialsPage() {
   }, [materials, activeSubject, searchTerm]);
 
   const getEmbeddablePdfUrl = (url: string) => {
-    let embedUrl = url;
     if (url.includes("drive.google.com")) {
-      embedUrl = url.replace("/view", "/preview");
-    } else {
-      embedUrl = `${url}#toolbar=0&navpanes=0&scrollbar=0`;
+      return url.replace("/view", "/preview");
     }
-    return embedUrl;
+    return `${url}#toolbar=0&navpanes=0&scrollbar=0`;
   };
-
-  const openPdfModal = (url: string) => {
-    setSelectedPdfUrl(getEmbeddablePdfUrl(url));
-  };
-
 
   return (
     <div className="space-y-6">
@@ -98,7 +89,7 @@ export default function StudyMaterialsPage() {
             Array.from({length: 8}).map((_, i) => <Skeleton key={i} className="h-48 w-full" />)
         ) : filteredMaterials.length > 0 ? (
           filteredMaterials.map(material => (
-             <Dialog key={material.id} onOpenChange={(open) => !open && setSelectedNote(null)}>
+             <Dialog key={material.id} onOpenChange={(open) => !open && setSelectedMaterial(null)}>
                 <Card className="flex flex-col">
                     <CardHeader>
                         <CardTitle className="flex items-start gap-3">
@@ -113,13 +104,11 @@ export default function StudyMaterialsPage() {
                         </p>
                     </CardContent>
                     <CardFooter>
-                         {material.type === 'PDF' ? (
-                            <Button className="w-full" onClick={() => openPdfModal(material.content)}>Open PDF</Button>
-                         ) : (
-                             <DialogTrigger asChild>
-                                <Button variant="outline" className="w-full" onClick={() => setSelectedNote(material)}>Read Note</Button>
-                            </DialogTrigger>
-                         )}
+                         <DialogTrigger asChild>
+                            <Button variant={material.type === 'PDF' ? 'default' : 'outline'} className="w-full" onClick={() => setSelectedMaterial(material)}>
+                                {material.type === 'PDF' ? 'Open PDF' : 'Read Note'}
+                            </Button>
+                        </DialogTrigger>
                     </CardFooter>
                 </Card>
              </Dialog>
@@ -131,34 +120,31 @@ export default function StudyMaterialsPage() {
         )}
       </div>
 
-       {selectedNote && (
-        <Dialog open={!!selectedNote} onOpenChange={(open) => !open && setSelectedNote(null)}>
-            <DialogContent className="sm:max-w-2xl">
+       {selectedMaterial && (
+        <Dialog open={!!selectedMaterial} onOpenChange={(open) => !open && setSelectedMaterial(null)}>
+            <DialogContent className={selectedMaterial.type === 'PDF' ? 'max-w-none w-[90vw] h-[90vh] flex flex-col' : 'sm:max-w-2xl'}>
                  <DialogHeader>
-                    <DialogTitle>{selectedNote.title}</DialogTitle>
-                    <DialogDescription>{selectedNote.subject}</DialogDescription>
+                    <DialogTitle>{selectedMaterial.title}</DialogTitle>
+                    <DialogDescription>{selectedMaterial.subject}</DialogDescription>
                 </DialogHeader>
-                <ScrollArea className="max-h-[60vh] mt-4">
-                    <div className="prose dark:prose-invert whitespace-pre-wrap p-1">
-                        {selectedNote.content}
+                {selectedMaterial.type === 'Note' ? (
+                    <ScrollArea className="max-h-[60vh] mt-4">
+                        <div className="prose dark:prose-invert whitespace-pre-wrap p-1">
+                            {selectedMaterial.content}
+                        </div>
+                    </ScrollArea>
+                ) : (
+                    <div className="flex-grow mt-4">
+                        <iframe
+                            src={getEmbeddablePdfUrl(selectedMaterial.content)}
+                            className="w-full h-full border-0"
+                            title={selectedMaterial.title}
+                        />
                     </div>
-                </ScrollArea>
+                )}
             </DialogContent>
         </Dialog>
       )}
-
-      {selectedPdfUrl && (
-        <Dialog open={!!selectedPdfUrl} onOpenChange={(open) => !open && setSelectedPdfUrl(null)}>
-            <DialogContent className="max-w-none w-[90vw] h-[90vh] p-2">
-                <iframe
-                    src={selectedPdfUrl}
-                    className="w-full h-full border-0"
-                    title="PDF Viewer"
-                />
-            </DialogContent>
-        </Dialog>
-      )}
-
     </div>
   );
 }
