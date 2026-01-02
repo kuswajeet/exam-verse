@@ -87,12 +87,12 @@
           "description": "The title of the test."
         },
         "category": {
-            "type": "string",
-            "description": "The category of the test (e.g., Engineering, Medical)."
+          "type": "string",
+          "description": "The category of the test (e.g., Engineering, Medical)."
         },
         "examName": {
-            "type": "string",
-            "description": "The name of the exam the test belongs to (e.g., JEE Main, NEET)."
+          "type": "string",
+          "description": "The name of the exam the test belongs to (e.g., JEE Main, NEET)."
         },
         "subject": {
           "type": "string",
@@ -224,6 +224,41 @@
         "role",
         "name"
       ]
+    },
+    "Material": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Material",
+      "type": "object",
+      "description": "Represents a study material, which can be a PDF or a text note.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the material."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the study material."
+        },
+        "subject": {
+          "type": "string",
+          "description": "The subject the material belongs to."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of material.",
+          "enum": ["PDF", "Note"]
+        },
+        "content": {
+          "type": "string",
+          "description": "URL for PDF or rich text content for a Note."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the material was created."
+        }
+      },
+      "required": ["id", "title", "subject", "type", "content", "createdAt"]
     }
   },
   "auth": {
@@ -283,7 +318,7 @@
         }
       },
       {
-        "path": "/users/{userId}/results/{resultId}",
+        "path": "/results/{resultId}",
         "definition": {
           "entityName": "TestAttempt",
           "schema": {
@@ -291,10 +326,6 @@
           },
           "description": "Stores the results of each test attempt for a user.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The user's ID."
-            },
             {
               "name": "resultId",
               "description": "The unique ID for the test result."
@@ -317,9 +348,26 @@
             }
           ]
         }
+      },
+      {
+        "path": "/materials/{materialId}",
+        "definition": {
+          "entityName": "Material",
+          "schema": {
+            "$ref": "#/backend/entities/Material"
+          },
+          "description": "Stores study materials like PDFs and notes.",
+          "params": [
+            {
+              "name": "materialId",
+              "description": "Unique identifier for the study material."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the 'Exam Verse Pro' application, focusing on secure and scalable data management for questions, tests, and users. Authorization Independence is achieved through the use of path-based ownership for user data and denormalization of roles. QAPs are supported by segregating admin and user data and utilizing role-based access control.\n\nThe `/users/{userId}` collection stores user profiles, using path-based ownership to ensure only the user or an admin can access their data.  The `/questions/{questionId}` collection stores question data. The question document contains the category, examName, and subject. The `/roles_admin/{userId}` collection grants administrative privileges, checked via document existence.\n\nThis structure facilitates secure `list` operations by ensuring collections contain documents with homogeneous security postures.  Authorization rules can be written without relying on `get()` calls, maintaining Authorization Independence for atomic operations."
+    "reasoning": "The Firestore structure is designed to support the 'Exam Verse Pro' application, focusing on secure and scalable data management for questions, tests, users, and study materials. Authorization Independence is achieved through the use of path-based ownership for user data and denormalization of roles. QAPs are supported by segregating admin and user data and utilizing role-based access control.\n\nThe `/users/{userId}` collection stores user profiles, using path-based ownership to ensure only the user or an admin can access their data. The `/questions/{questionId}` collection stores question data. The `/roles_admin/{userId}` collection grants administrative privileges. The `/materials/{materialId}` collection stores study materials, accessible to all users but managed only by admins."
   }
 }
+
     

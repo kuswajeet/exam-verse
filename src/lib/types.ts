@@ -63,4 +63,14 @@ export interface TestAttempt {
   completedAt: Timestamp;
 }
 
+export interface Material {
+  id: string;
+  title: string;
+  subject: string;
+  type: 'PDF' | 'Note';
+  content: string; // URL for PDF, rich text for Note
+  createdAt: Timestamp;
+}
+    
+
     

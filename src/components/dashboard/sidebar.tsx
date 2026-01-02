@@ -15,6 +15,7 @@ import {
   Settings,
   PlusCircle,
   Trophy,
+  BookOpen,
 } from "lucide-react";
 import { usePathname } from 'next/navigation';
 
@@ -34,6 +35,7 @@ const navItems = [
   { href: "/dashboard/results", icon: GraduationCap, label: "Results" },
   { href: "/dashboard/leaderboard", icon: Trophy, label: "Leaderboard" },
   { href: "/dashboard/analytics", icon: LineChart, label: "Analytics" },
+  { href: "/dashboard/materials", icon: BookOpen, label: "Study Materials" },
   { href: "/dashboard/settings", icon: Settings, label: "My Profile" },
 ];
 
@@ -42,6 +44,7 @@ const adminNavItems = [
     { href: "/admin/create-test", icon: PlusCircle, label: "Create Test" },
     { href: "/admin/generate-question", icon: FlaskConical, label: "AI Generator" },
     { href: "/admin/upload-questions", icon: Upload, label: "Bulk Upload" },
+    { href: "/admin/materials", icon: BookOpen, label: "Manage Materials" },
 ]
 
 export function DashboardSidebar() {
@@ -125,3 +128,6 @@ export function DashboardSidebar() {
     </div>
   );
 }
+
+
+    

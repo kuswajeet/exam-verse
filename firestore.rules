@@ -75,6 +75,15 @@ service cloud.firestore {
         allow get, list: if isSignedIn();
         allow create, update, delete: if isAdmin();
     }
+    
+    /**
+     * @description Study materials are readable by everyone but only managed by admins.
+     * @path /materials/{materialId}
+     */
+    match /materials/{materialId} {
+      allow get, list: if isSignedIn();
+      allow write: if isAdmin();
+    }
 
     /**
      * @description User profiles and their subcollections.
@@ -86,16 +95,16 @@ service cloud.firestore {
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isOwner(userId) || isAdmin();
-      
-      /**
-       * @description A user's test results are private to them, but readable by all for leaderboards.
-       * @path /users/{userId}/results/{resultId}
-       */
-      match /results/{resultId} {
-        allow get, list: if isSignedIn(); // Allow any signed-in user to read for leaderboards (collectionGroup query)
-        allow create: if isOwner(userId); // Only the owner can create their own results
+    }
+
+    /**
+     * @description Root collection for test results, enabling leaderboards.
+     * @path /results/{resultId}
+     */
+    match /results/{resultId} {
+        allow get, list: if isSignedIn();
+        allow create: if isOwner(resource.data.userId);
         allow update, delete: if false; // Results are immutable
-      }
     }
 
     /**
@@ -107,3 +116,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
