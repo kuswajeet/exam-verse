@@ -20,6 +20,7 @@ import {
   Zap,
   Clock,
   TestTube,
+  BookMarked,
 } from "lucide-react";
 import { usePathname } from 'next/navigation';
 
@@ -54,6 +55,7 @@ const profileNavItems = [
 
 const adminNavItems = [
     { href: "/admin/manage-users", icon: Users, label: "Manage Users" },
+    { href: "/admin/questions", icon: BookMarked, label: "Manage Questions" },
     { href: "/admin/create-test", icon: PlusCircle, label: "Create Test" },
     { href: "/admin/generate-question", icon: FlaskConical, label: "AI Generator" },
     { href: "/admin/upload-questions", icon: Upload, label: "Bulk Upload" },
