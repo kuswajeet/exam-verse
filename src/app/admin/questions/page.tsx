@@ -1,16 +1,22 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, writeBatch, doc } from 'firebase/firestore';
+import { collection, query, orderBy, writeBatch, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import type { Question } from '@/lib/types';
-import { Loader, PlusCircle, Trash2, Zap } from 'lucide-react';
+import { Loader, PlusCircle, Trash2, Zap, Search, X, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 const sampleOneLiners = [
   {
@@ -49,30 +55,6 @@ const sampleOneLiners = [
     difficulty: 'medium',
     questionType: 'one_liner',
   },
-  {
-    questionText: 'Who is known as the father of the computer?',
-    options: ['Charles Babbage'],
-    correctAnswerIndex: 0,
-    explanation: 'Charles Babbage, an English mathematician, is credited with originating the concept of a digital programmable computer.',
-    category: 'General',
-    examName: 'General',
-    subject: 'Computer Science',
-    topic: 'History of Computing',
-    difficulty: 'easy',
-    questionType: 'one_liner',
-  },
-  {
-    questionText: 'What is the chemical symbol for gold?',
-    options: ['Au'],
-    correctAnswerIndex: 0,
-    explanation: 'The symbol Au comes from the Latin word for gold, "aurum".',
-    category: 'General',
-    examName: 'General',
-    subject: 'Chemistry',
-    topic: 'Elements',
-    difficulty: 'easy',
-    questionType: 'one_liner',
-  },
 ];
 
 const sampleMultipleChoice = [
@@ -100,55 +82,129 @@ const sampleMultipleChoice = [
     difficulty: 'medium',
     questionType: 'single_choice',
   },
-  {
-    questionText: 'Which of the following is a prime number?',
-    options: ['9', '15', '23', '27'],
-    correctAnswerIndex: 2,
-    explanation: 'A prime number is a natural number greater than 1 that has no positive divisors other than 1 and itself. 23 fits this definition.',
-    category: 'Engineering',
-    examName: 'JEE Main',
-    subject: 'Maths',
-    topic: 'Number Theory',
-    difficulty: 'easy',
-    questionType: 'single_choice',
-  },
-  {
-    questionText: 'What is the capital of Japan?',
-    options: ['Beijing', 'Seoul', 'Bangkok', 'Tokyo'],
-    correctAnswerIndex: 3,
-    explanation: 'Tokyo, Japan’s busy capital, mixes the ultramodern and the traditional, from skyscrapers to historic temples.',
-    category: 'General',
-    examName: 'General',
-    subject: 'Geography',
-    topic: 'World Capitals',
-    difficulty: 'easy',
-    questionType: 'single_choice',
-  },
-  {
-    questionText: 'The law of inertia is also known as:',
-    options: ["Newton's First Law", "Newton's Second Law", "Newton's Third Law", "Law of Gravitation"],
-    correctAnswerIndex: 0,
-    explanation: "Newton's First Law of Motion states that an object will remain at rest or in uniform motion in a straight line unless acted upon by an external force.",
-    category: 'Engineering',
-    examName: 'JEE Main',
-    subject: 'Physics',
-    topic: 'Laws of Motion',
-    difficulty: 'medium',
-    questionType: 'single_choice',
-  },
 ];
 
 
 export default function ManageQuestionsPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [isSeeding, setIsSeeding] = useState(false);
   
+  // State
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({ topic: 'all', difficulty: 'all', type: 'all' });
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Data fetching
   const questionsQuery = useMemoFirebase(() => 
     firestore ? query(collection(firestore, 'questions'), orderBy('topic', 'asc')) : null, 
     [firestore]
   );
-  const { data: questions, isLoading, error } = useCollection<Question>(questionsQuery);
+  const { data: allQuestions, isLoading, error } = useCollection<Question>(questionsQuery);
+
+  // Memoized lists for filters and display
+  const { topics, difficulties, types } = useMemo(() => {
+    if (!allQuestions) return { topics: [], difficulties: [], types: [] };
+    const topicSet = new Set<string>();
+    const difficultySet = new Set<string>();
+    const typeSet = new Set<string>();
+    allQuestions.forEach(q => {
+      topicSet.add(q.topic);
+      difficultySet.add(q.difficulty);
+      typeSet.add(q.questionType);
+    });
+    return { 
+      topics: ['all', ...Array.from(topicSet).sort()],
+      difficulties: ['all', ...Array.from(difficultySet)],
+      types: ['all', ...Array.from(typeSet)]
+    };
+  }, [allQuestions]);
+
+  const filteredQuestions = useMemo(() => {
+    if (!allQuestions) return [];
+    return allQuestions.filter(q => 
+      (q.questionText.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (filters.topic === 'all' || q.topic === filters.topic) &&
+      (filters.difficulty === 'all' || q.difficulty === filters.difficulty) &&
+      (filters.type === 'all' || q.questionType === filters.type)
+    );
+  }, [allQuestions, searchTerm, filters]);
+  
+  // Handlers
+  const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
+    setFilters(prev => ({ ...prev, [filterName]: value }));
+  };
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setFilters({ topic: 'all', difficulty: 'all', type: 'all' });
+  };
+  
+  const handleSelectAll = (checked: boolean | 'indeterminate') => {
+    if (checked) {
+      setSelectedIds(new Set(filteredQuestions.map(q => q.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleRowSelect = (id: string, checked: boolean) => {
+    const newSelectedIds = new Set(selectedIds);
+    if (checked) {
+      newSelectedIds.add(id);
+    } else {
+      newSelectedIds.delete(id);
+    }
+    setSelectedIds(newSelectedIds);
+  };
+  
+  const handleDeleteSelected = async () => {
+    if (!firestore || selectedIds.size === 0) return;
+    try {
+      const batch = writeBatch(firestore);
+      selectedIds.forEach(id => {
+        batch.delete(doc(firestore, 'questions', id));
+      });
+      await batch.commit();
+      toast({ title: "Success", description: `${selectedIds.size} questions deleted.` });
+      setSelectedIds(new Set());
+    } catch (e) {
+      console.error(e);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete questions.' });
+    }
+  };
+
+  const handleDeleteRow = async (id: string) => {
+     if (!firestore) return;
+     try {
+        await deleteDoc(doc(firestore, 'questions', id));
+        toast({ title: "Success", description: `Question deleted.` });
+     } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete question.' });
+     }
+  };
+
+  const handleEditClick = (question: Question) => {
+    setEditingQuestion({ ...question });
+    setIsModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!firestore || !editingQuestion) return;
+    try {
+        const { id, ...dataToUpdate } = editingQuestion;
+        await updateDoc(doc(firestore, 'questions', id), dataToUpdate);
+        toast({ title: 'Success', description: 'Question updated successfully.' });
+        setIsModalOpen(false);
+        setEditingQuestion(null);
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update question.' });
+    }
+  };
 
   const handleSeedData = async () => {
     if (!firestore) return;
@@ -157,11 +213,10 @@ export default function ManageQuestionsPage() {
     try {
       const batch = writeBatch(firestore);
       const questionsRef = collection(firestore, 'questions');
-      
       const allSamples = [...sampleOneLiners, ...sampleMultipleChoice];
 
       allSamples.forEach((q) => {
-        const docRef = doc(questionsRef); // Auto-generate ID
+        const docRef = doc(questionsRef);
         batch.set(docRef, { ...q, id: docRef.id });
       });
 
@@ -172,10 +227,6 @@ export default function ManageQuestionsPage() {
         description: `${allSamples.length} sample questions have been added.`,
         className: 'bg-green-100 dark:bg-green-900',
       });
-
-      // Simple way to refresh the data shown in the useCollection hook
-      window.location.reload();
-
     } catch (e) {
       console.error(e);
       toast({
@@ -190,20 +241,42 @@ export default function ManageQuestionsPage() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Manage Questions</CardTitle>
-          <CardDescription>View, edit, or delete all questions in the database.</CardDescription>
+      <CardHeader>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <CardTitle>Manage Questions</CardTitle>
+              <CardDescription>View, filter, edit, or delete all questions in the database.</CardDescription>
+            </div>
+            <div className="flex gap-2">
+                {selectedIds.size > 0 && (
+                    <Button variant="destructive" onClick={handleDeleteSelected}>
+                        <Trash2 className="mr-2" /> Delete Selected ({selectedIds.size})
+                    </Button>
+                )}
+                 <Button onClick={handleSeedData} disabled={isSeeding}>
+                  {isSeeding ? <Loader className="mr-2 animate-spin" /> : <Zap className="mr-2" />}
+                  Add Sample Data
+                </Button>
+            </div>
         </div>
-        <Button onClick={handleSeedData} disabled={isSeeding}>
-          {isSeeding ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-          Add Sample Data
-        </Button>
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="relative lg:col-span-2">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Search by question text..." className="pl-8" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            </div>
+            <Select value={filters.topic} onValueChange={(v) => handleFilterChange('topic', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{topics.map(t => <SelectItem key={t} value={t} className="capitalize">{t === 'all' ? 'All Topics' : t}</SelectItem>)}</SelectContent></Select>
+            <Select value={filters.difficulty} onValueChange={(v) => handleFilterChange('difficulty', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{difficulties.map(d => <SelectItem key={d} value={d} className="capitalize">{d === 'all' ? 'All Difficulties' : d}</SelectItem>)}</SelectContent></Select>
+            <Select value={filters.type} onValueChange={(v) => handleFilterChange('type', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{types.map(t => <SelectItem key={t} value={t} className="capitalize">{t === 'all' ? 'All Types' : t}</SelectItem>)}</SelectContent></Select>
+        </div>
+         { (searchTerm || filters.topic !== 'all' || filters.difficulty !== 'all' || filters.type !== 'all') && (
+            <Button variant="ghost" size="sm" onClick={resetFilters} className="mt-4"><X className="mr-2 h-4 w-4"/>Clear Filters</Button>
+         )}
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-12"><Checkbox onCheckedChange={handleSelectAll} checked={filteredQuestions.length > 0 && selectedIds.size === filteredQuestions.length} /></TableHead>
               <TableHead className="w-[40%]">Question Text</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Topic</TableHead>
@@ -213,26 +286,22 @@ export default function ManageQuestionsPage() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={5} className="text-center h-24">Loading questions...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center h-24">Loading questions...</TableCell></TableRow>
             ) : error ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-red-500 h-24">Error loading questions.</TableCell></TableRow>
-            ) : questions?.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center h-24">No questions found. Try adding some sample data!</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-red-500 h-24">Error loading questions.</TableCell></TableRow>
+            ) : filteredQuestions.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="text-center h-24">No questions found.</TableCell></TableRow>
             ) : (
-              questions?.map(question => (
-                <TableRow key={question.id}>
+              filteredQuestions.map(question => (
+                <TableRow key={question.id} data-state={selectedIds.has(question.id) ? 'selected' : ''}>
+                  <TableCell><Checkbox onCheckedChange={(checked) => handleRowSelect(question.id, !!checked)} checked={selectedIds.has(question.id)} /></TableCell>
                   <TableCell className="font-medium max-w-sm truncate">{question.questionText}</TableCell>
                   <TableCell><Badge variant={question.questionType === 'one_liner' ? 'outline' : 'secondary'}>{question.questionType}</Badge></TableCell>
                   <TableCell>{question.topic}</TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant={question.difficulty === 'hard' ? 'destructive' : question.difficulty === 'medium' ? 'default' : 'secondary'}
-                    >
-                      {question.difficulty}
-                    </Badge>
-                  </TableCell>
+                  <TableCell><Badge variant={question.difficulty === 'hard' ? 'destructive' : 'secondary'}>{question.difficulty}</Badge></TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" disabled><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(question)}><Pencil className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteRow(question.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                   </TableCell>
                 </TableRow>
               ))
@@ -240,6 +309,91 @@ export default function ManageQuestionsPage() {
           </TableBody>
         </Table>
       </CardContent>
+      
+       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Question</DialogTitle>
+          </DialogHeader>
+          {editingQuestion && (
+            <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
+              <div className="grid gap-2">
+                <Label htmlFor="q-text">Question Text</Label>
+                <Textarea id="q-text" value={editingQuestion.questionText} onChange={e => setEditingQuestion({...editingQuestion, questionText: e.target.value})} rows={3} />
+              </div>
+              
+              {editingQuestion.questionType === 'single_choice' ? (
+                <>
+                  <Label>Options</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {editingQuestion.options.map((opt, index) => (
+                      <Input key={index} value={opt} onChange={e => {
+                        const newOptions = [...editingQuestion.options];
+                        newOptions[index] = e.target.value;
+                        setEditingQuestion({...editingQuestion, options: newOptions });
+                      }} />
+                    ))}
+                  </div>
+                  <div className="grid gap-2">
+                      <Label htmlFor="correct-index">Correct Answer Index</Label>
+                      <Select value={editingQuestion.correctAnswerIndex.toString()} onValueChange={v => setEditingQuestion({...editingQuestion, correctAnswerIndex: parseInt(v)})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {editingQuestion.options.map((_, index) => <SelectItem key={index} value={index.toString()}>{`Option ${index + 1}`}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                  </div>
+                </>
+              ) : (
+                 <div className="grid gap-2">
+                    <Label htmlFor="one-liner-answer">Correct Answer</Label>
+                    <Input id="one-liner-answer" value={editingQuestion.options[0]} onChange={e => setEditingQuestion({...editingQuestion, options: [e.target.value]})}/>
+                 </div>
+              )}
+
+              <div className="grid gap-2">
+                <Label htmlFor="explanation">Explanation</Label>
+                <Textarea id="explanation" value={editingQuestion.explanation} onChange={e => setEditingQuestion({...editingQuestion, explanation: e.target.value})} rows={3} />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="topic">Topic</Label>
+                    <Input id="topic" value={editingQuestion.topic} onChange={e => setEditingQuestion({...editingQuestion, topic: e.target.value})} />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="difficulty">Difficulty</Label>
+                     <Select value={editingQuestion.difficulty} onValueChange={v => setEditingQuestion({...editingQuestion, difficulty: v as any})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="easy">Easy</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="hard">Hard</SelectItem>
+                        </SelectContent>
+                      </Select>
+                </div>
+                 <div className="grid gap-2">
+                    <Label htmlFor="type">Type</Label>
+                     <Select value={editingQuestion.questionType} onValueChange={v => setEditingQuestion({...editingQuestion, questionType: v as any})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="single_choice">Multiple Choice</SelectItem>
+                            <SelectItem value="one_liner">One Liner</SelectItem>
+                        </SelectContent>
+                      </Select>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <DialogClose asChild>
+                <Button type="button" variant="secondary">Cancel</Button>
+            </DialogClose>
+            <Button type="submit" onClick={handleSaveEdit}>Save changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
+
+    
