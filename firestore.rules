@@ -82,7 +82,7 @@ service cloud.firestore {
      */
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
-      allow list: if false; // Deny listing users for privacy
+      allow list: if false; // Deny listing user profiles for privacy. This does NOT block collection group queries on subcollections.
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isOwner(userId) || isAdmin();
@@ -92,7 +92,7 @@ service cloud.firestore {
        * @path /users/{userId}/results/{resultId}
        */
       match /results/{resultId} {
-        allow get, list: if isSignedIn(); // Allow any signed-in user to read for leaderboards
+        allow get, list: if isSignedIn(); // Allow any signed-in user to read for leaderboards (collectionGroup query)
         allow create: if isOwner(userId); // Only the owner can create their own results
         allow update, delete: if false; // Results are immutable
       }
