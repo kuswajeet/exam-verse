@@ -1,10 +1,5 @@
 'use client';
 
-import { Sidebar } from "@/components/Sidebar";
-import { useUser } from "@/firebase";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { AuthWrapper } from "@/components/auth-wrapper";
@@ -17,7 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <DashboardSidebar />
         <div className="flex flex-col">
           <DashboardHeader />
-          <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background">
+          <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-muted/40">
             {children}
           </main>
         </div>
