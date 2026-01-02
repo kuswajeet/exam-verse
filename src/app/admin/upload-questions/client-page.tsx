@@ -60,9 +60,9 @@ export function UploadQuestionsClientPage() {
   const firestore = useFirestore();
 
   const handleDownloadTemplate = () => {
-    const headers = "Question,Type,OptionA,OptionB,OptionC,OptionD,CorrectAnswer,Explanation,Topic,Difficulty";
-    const exampleMcq = "What is 2+2?,multiple_choice,1,3,4,5,4,Basic math fact,Math,easy";
-    const exampleOneLiner = "What is the powerhouse of the cell?,one_liner,,,,,Mitochondria,Energy source,Biology,medium";
+    const headers = "Question,Type,OptionA,OptionB,OptionC,OptionD,CorrectAnswer,Explanation,Topic,Difficulty,SourceExamName,PreviousYear";
+    const exampleMcq = "What is 2+2?,multiple_choice,1,3,4,5,4,Basic math fact,Math,easy,Basic Maths Test,2022";
+    const exampleOneLiner = "What is the powerhouse of the cell?,one_liner,,,,,Mitochondria,Energy source,Biology,medium,NEET,2021";
     
     const csvContent = [headers, exampleMcq, exampleOneLiner].join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -89,6 +89,8 @@ export function UploadQuestionsClientPage() {
     const category = formData.get("category") as string;
     const examName = formData.get("examName") as string;
     const subject = formData.get("subject") as string;
+    const sourceExamNameFallback = formData.get("sourceExamName") as string;
+    const previousYearFallback = formData.get("previousYear") as string;
 
     if (!file || file.size === 0) {
       setState({ status: "error", data: null, message: "No file selected." });
@@ -164,8 +166,8 @@ export function UploadQuestionsClientPage() {
                 subTopic: row.SubTopic || null,
                 difficulty: difficulty,
                 questionType: questionType,
-                previousYear: row.PreviousYear || null,
-                sourceExamName: row.SourceExamName || null,
+                previousYear: row.PreviousYear || previousYearFallback || null,
+                sourceExamName: row.SourceExamName || sourceExamNameFallback || null,
             };
         });
 
@@ -260,6 +262,17 @@ export function UploadQuestionsClientPage() {
                 </Select>
               </div>
             </div>
+
+             <div className="grid md:grid-cols-2 gap-4 pt-4">
+                <div className="space-y-2">
+                    <Label htmlFor="sourceExamName">Source Exam Name (Optional Fallback)</Label>
+                    <Input id="sourceExamName" name="sourceExamName" placeholder="e.g. JEE Advanced" />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="previousYear">Previous Year (Optional Fallback)</Label>
+                    <Input id="previousYear" name="previousYear" placeholder="e.g. 2023" />
+                </div>
+            </div>
             
             <div className="space-y-2 pt-4">
               <Label htmlFor="csvFile" className="font-bold">CSV File</Label>
@@ -346,5 +359,3 @@ export function UploadQuestionsClientPage() {
     </div>
   );
 }
-
-    
