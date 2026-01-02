@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AppLogo } from "../icons";
 import Image from "next/image";
 import { useAuth, useUser } from "@/firebase";
@@ -61,14 +61,19 @@ export function DashboardHeader() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="flex flex-col">
-          <nav className="grid gap-2 text-lg font-medium">
-            <Link
-              href="#"
-              className="flex items-center gap-2 text-lg font-semibold"
-            >
-              <AppLogo className="h-6 w-6 text-primary" />
-              <span className="sr-only">Verse Exam Prep</span>
-            </Link>
+          <SheetHeader className="border-b pb-4">
+              <SheetTitle>
+                <Link
+                  href="/"
+                  className="flex items-center gap-2 text-lg font-semibold"
+                >
+                  <AppLogo className="h-6 w-6 text-primary" />
+                  <span>Verse Exam Prep</span>
+                </Link>
+              </SheetTitle>
+          </SheetHeader>
+
+          <nav className="grid gap-2 text-lg font-medium mt-4">
             <Link
               href="/dashboard"
               className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
@@ -170,5 +175,3 @@ export function DashboardHeader() {
     </header>
   );
 }
-
-    
