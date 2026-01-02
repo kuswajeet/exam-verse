@@ -87,7 +87,7 @@ export default function ResultsPage() {
             ) : (
                 <TableRow>
                     <TableCell colSpan={5} className="text-center h-24">
-                        You haven't completed any tests yet.
+                        You haven't completed any tests yet. Go to the Tests tab to start!
                     </TableCell>
                 </TableRow>
             )}
