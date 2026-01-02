@@ -19,9 +19,11 @@ import { useRouter } from 'next/navigation';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const createTestSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
+  testType: z.enum(['exam', 'quiz']).default('exam'),
   category: z.string(),
   examName: z.string(),
   subject: z.string(),
@@ -56,6 +58,7 @@ export function CreateTestClientPage() {
     resolver: zodResolver(createTestSchema),
     defaultValues: {
       title: '',
+      testType: 'exam',
       category: '',
       examName: '',
       subject: '',
@@ -166,6 +169,7 @@ export function CreateTestClientPage() {
       const testCollection = collection(firestore, 'tests');
       const testData: Partial<Test> & { createdAt: any } = {
         title: values.title,
+        testType: values.testType,
         category: values.category,
         examName: values.examName,
         subject: values.subject,
@@ -225,19 +229,42 @@ export function CreateTestClientPage() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="grid gap-6 pt-6">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Test Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Physics Chapter 1 Mock" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Test Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Physics Chapter 1 Mock" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="testType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Test Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a test type" />
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            <SelectItem value="exam">Main Exam - for Tests page</SelectItem>
+                            <SelectItem value="quiz">Practice Quiz - for Quizzes page</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {renderFilterInput('category', 'Category', 'category-list', uniqueValues.categories)}

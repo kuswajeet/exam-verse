@@ -44,6 +44,7 @@ export interface Test {
   questionIds?: string[];
   isPublished?: boolean;
   createdAt?: Timestamp;
+  testType?: 'exam' | 'quiz';
 }
 
 export interface TestWithQuestions extends Test {
