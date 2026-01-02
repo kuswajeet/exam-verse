@@ -38,6 +38,7 @@ export interface Test {
   subject: string;
   isFree: boolean;
   price: number;
+  examPrice?: number;
   durationMinutes: number;
   totalMarks: number;
   questionCount?: number;
@@ -45,6 +46,7 @@ export interface Test {
   isPublished?: boolean;
   createdAt?: Timestamp;
   testType?: 'exam' | 'quiz';
+  testSubType?: 'full' | 'subject' | 'topic';
 }
 
 export interface TestWithQuestions extends Test {

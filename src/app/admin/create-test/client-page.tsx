@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const createTestSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   testType: z.enum(['exam', 'quiz']).default('exam'),
+  testSubType: z.enum(['full', 'subject', 'topic']).default('full'),
   category: z.string(),
   examName: z.string(),
   subject: z.string(),
@@ -34,6 +35,7 @@ const createTestSchema = z.object({
   totalMarks: z.coerce.number().min(1, 'Total marks must be at least 1'),
   isFree: z.boolean().default(true),
   price: z.coerce.number().optional(),
+  examPrice: z.coerce.number().optional(),
 });
 
 type CreateTestForm = z.infer<typeof createTestSchema>;
@@ -59,6 +61,7 @@ export function CreateTestClientPage() {
     defaultValues: {
       title: '',
       testType: 'exam',
+      testSubType: 'full',
       category: '',
       examName: '',
       subject: '',
@@ -69,6 +72,7 @@ export function CreateTestClientPage() {
       totalMarks: 100,
       isFree: true,
       price: 0,
+      examPrice: 0,
     },
   });
 
@@ -170,6 +174,7 @@ export function CreateTestClientPage() {
       const testData: Partial<Test> & { createdAt: any } = {
         title: values.title,
         testType: values.testType,
+        testSubType: values.testSubType,
         category: values.category,
         examName: values.examName,
         subject: values.subject,
@@ -177,6 +182,7 @@ export function CreateTestClientPage() {
         totalMarks: values.totalMarks,
         isFree: values.isFree,
         price: values.isFree ? 0 : values.price || 0,
+        examPrice: values.examPrice || 0,
         questionIds: finalQuestionIds,
         questionCount: finalQuestionIds.length,
         isPublished: true,
@@ -265,6 +271,44 @@ export function CreateTestClientPage() {
                 )}
               />
             </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                control={form.control}
+                name="testSubType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Test Sub-Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a sub-type" />
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            <SelectItem value="full">Full Mock Test</SelectItem>
+                            <SelectItem value="subject">Subject Wise Test</SelectItem>
+                             <SelectItem value="topic">Topic Wise Test</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                  control={form.control}
+                  name="examPrice"
+                  render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>Bundle Price (₹)</FormLabel>
+                      <FormControl>
+                      <Input type="number" placeholder="e.g., 999" {...field} />
+                      </FormControl>
+                      <FormDescription>If 0, the exam is Free.</FormDescription>
+                      <FormMessage />
+                  </FormItem>
+                  )}
+              />
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {renderFilterInput('category', 'Category', 'category-list', uniqueValues.categories)}
@@ -291,7 +335,7 @@ export function CreateTestClientPage() {
                             <div className="space-y-0.5">
                                 <FormLabel className="text-base">Test Access</FormLabel>
                                 <p className="text-sm text-muted-foreground">
-                                    Is this test free for all users?
+                                    Is this single test free? (Bundle price is separate)
                                 </p>
                             </div>
                             <FormControl>
@@ -309,7 +353,7 @@ export function CreateTestClientPage() {
                         name="price"
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Price ($)</FormLabel>
+                            <FormLabel>Single Test Price ($)</FormLabel>
                             <FormControl>
                             <Input type="number" step="0.01" {...field} />
                             </FormControl>
