@@ -31,11 +31,25 @@ async function getTestWithQuestions(firestore: any, testId: string): Promise<Tes
     
     // Firestore 'in' queries are limited to 30 elements. 
     // If a test can have more, this needs to be chunked.
-    const questionsQuery = query(collection(firestore, 'questions'), where('__name__', 'in', testData.questionIds));
-    const questionsSnapshot = await getDocs(questionsQuery);
+    const questionChunks: string[][] = [];
+    for (let i = 0; i < testData.questionIds.length; i += 30) {
+        questionChunks.push(testData.questionIds.slice(i, i + 30));
+    }
+    
+    const questionPromises = questionChunks.map(chunk => 
+        getDocs(query(collection(firestore, 'questions'), where('__name__', 'in', chunk)))
+    );
+
+    const questionSnapshots = await Promise.all(questionPromises);
+
+    const questionsMap = new Map<string, Question>();
+    questionSnapshots.forEach(snapshot => {
+        snapshot.docs.forEach(doc => {
+            questionsMap.set(doc.id, { id: doc.id, ...doc.data() } as Question);
+        });
+    });
 
     // This ensures question order is preserved from the test document
-    const questionsMap = new Map(questionsSnapshot.docs.map(doc => [doc.id, { id: doc.id, ...doc.data() } as Question]));
     const questions = testData.questionIds.map(id => questionsMap.get(id)).filter((q): q is Question => !!q);
     
     return { ...testData, questions };
