@@ -1,77 +1,75 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
 import type { Question } from '@/lib/types';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, ArrowRight, Lightbulb, Zap, RefreshCw, Target } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Eye, Lightbulb, Target, BookOpen, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function OneLinersPage() {
   const firestore = useFirestore();
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [showAnswer, setShowAnswer] = useState(false);
 
-  // We add a key to the query to force a refetch when the user clicks "New Pack"
-  const [queryKey, setQueryKey] = useState(0); 
+  const [filters, setFilters] = useState({
+    subject: 'all',
+    topic: 'all',
+    difficulty: 'all',
+  });
 
   const oneLinersQuery = useMemoFirebase(() => 
     firestore 
       ? query(
           collection(firestore, 'questions'), 
           where('questionType', '==', 'one_liner'),
-          // WARNING: This random query is inefficient. For production, a better strategy
-          // would be to fetch documents by a random ID or use a dedicated API.
-          // where('__name__', '>=', doc(collection(firestore, 'questions')).id),
-          limit(20)
+          limit(100) // Fetch a larger batch for client-side filtering
         )
       : null, 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [firestore, queryKey]
+    [firestore]
   );
   
-  const { data: questions, isLoading } = useCollection<Question>(oneLinersQuery);
+  const { data: allQuestions, isLoading } = useCollection<Question>(oneLinersQuery);
 
-  const handleNext = () => {
-    setShowAnswer(false);
-    if (questions && currentIndex < questions.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-    }
+  const { uniqueSubjects, uniqueTopics, uniqueDifficulties } = useMemo(() => {
+    if (!allQuestions) return { uniqueSubjects: [], uniqueTopics: [], uniqueDifficulties: [] };
+    const subjectSet = new Set<string>();
+    const topicSet = new Set<string>();
+    const difficultySet = new Set<string>();
+    allQuestions.forEach(q => {
+      if(q.subject) subjectSet.add(q.subject);
+      if(q.topic) topicSet.add(q.topic);
+      if(q.difficulty) difficultySet.add(q.difficulty);
+    });
+    return {
+      uniqueSubjects: ['all', ...Array.from(subjectSet).sort()],
+      uniqueTopics: ['all', ...Array.from(topicSet).sort()],
+      uniqueDifficulties: ['all', ...Array.from(difficultySet)],
+    };
+  }, [allQuestions]);
+
+  const filteredQuestions = useMemo(() => {
+    if (!allQuestions) return [];
+    return allQuestions.filter(q => 
+      (filters.subject === 'all' || q.subject === filters.subject) &&
+      (filters.topic === 'all' || q.topic === filters.topic) &&
+      (filters.difficulty === 'all' || q.difficulty === filters.difficulty)
+    );
+  }, [allQuestions, filters]);
+
+  const handleFilterChange = (filterName: keyof typeof filters, value: string) => {
+    setFilters(prev => ({ ...prev, [filterName]: value }));
   };
-
-  const handlePrevious = () => {
-    setShowAnswer(false);
-    if (currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1);
-    }
-  };
-
-  const handleNewPack = () => {
-    setCurrentIndex(0);
-    setShowAnswer(false);
-    setQueryKey(prev => prev + 1);
-  }
-
-  const currentQuestion = questions?.[currentIndex];
-
-  if (isLoading) {
-    return (
-        <div className="flex flex-col items-center justify-center h-full space-y-6">
-            <Skeleton className="h-72 w-full max-w-2xl" />
-            <div className="flex gap-4">
-                <Skeleton className="h-10 w-32" />
-                <Skeleton className="h-10 w-32" />
-            </div>
-        </div>
-    )
-  }
   
-  if (!questions || questions.length === 0) {
+  const resetFilters = () => {
+    setFilters({ subject: 'all', topic: 'all', difficulty: 'all' });
+  };
+  
+  if (!isLoading && (!allQuestions || allQuestions.length === 0)) {
     return (
         <Card className="max-w-2xl mx-auto mt-10 text-center">
             <CardHeader>
@@ -85,72 +83,80 @@ export default function OneLinersPage() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center p-4 h-full">
-        <div className="w-full max-w-2xl">
-            <div className="flex justify-between items-center mb-4">
-                <h1 className="text-2xl font-bold flex items-center gap-2">
-                    <Zap className="text-primary"/> One-Liner Practice
-                </h1>
-                <Button onClick={handleNewPack} variant="outline" size="sm">
-                    <RefreshCw className="mr-2 h-4 w-4"/>
-                    New Pack
-                </Button>
+    <div className="space-y-6">
+        <Card>
+            <CardHeader>
+                <CardTitle>One-Liner Practice</CardTitle>
+                <CardDescription>Quickly revise key concepts. Click a question to reveal the answer.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+               <Select value={filters.subject} onValueChange={(v) => handleFilterChange('subject', v)}>
+                    <SelectTrigger><SelectValue placeholder="All Subjects"/></SelectTrigger>
+                    <SelectContent>{uniqueSubjects.map(s => <SelectItem key={s} value={s} className="capitalize">{s === 'all' ? 'All Subjects' : s}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={filters.topic} onValueChange={(v) => handleFilterChange('topic', v)}>
+                    <SelectTrigger><SelectValue placeholder="All Topics"/></SelectTrigger>
+                    <SelectContent>{uniqueTopics.map(t => <SelectItem key={t} value={t} className="capitalize">{t === 'all' ? 'All Topics' : t}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={filters.difficulty} onValueChange={(v) => handleFilterChange('difficulty', v)}>
+                    <SelectTrigger><SelectValue placeholder="All Difficulties"/></SelectTrigger>
+                    <SelectContent>{uniqueDifficulties.map(d => <SelectItem key={d} value={d} className="capitalize">{d === 'all' ? 'All Difficulties' : d}</SelectItem>)}</SelectContent>
+                </Select>
+                <Button variant="outline" onClick={resetFilters}><X className="mr-2 h-4 w-4"/>Clear</Button>
+            </CardContent>
+        </Card>
+
+        {isLoading ? (
+            <div className="space-y-4">
+                {Array.from({length: 5}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
             </div>
-            
-            <div key={currentIndex}>
-                <Card className="min-h-[350px] flex flex-col justify-between shadow-lg transition-all duration-300">
-                    <CardHeader>
-                        <div className="flex justify-between items-start">
-                            <CardDescription>Question {currentIndex + 1} of {questions.length}</CardDescription>
-                             {currentQuestion?.sourceExamName && currentQuestion?.previousYear && (
-                                <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100/80 dark:bg-yellow-900/50 dark:text-yellow-200">
-                                    <Target className="mr-2 h-3 w-3" />
-                                    {currentQuestion.sourceExamName} {currentQuestion.previousYear}
-                                </Badge>
-                            )}
-                        </div>
-                    </CardHeader>
-                    <CardContent className="flex-grow flex items-center justify-center text-center">
-                        <p className="text-xl md:text-2xl font-semibold">
-                            {currentQuestion?.questionText}
-                        </p>
-                    </CardContent>
-                    <CardFooter className="flex-col items-center gap-4">
-                        {!showAnswer ? (
-                            <Button onClick={() => setShowAnswer(true)} className="w-full max-w-xs">Show Answer</Button>
-                        ) : (
-                            <div
-                                className="w-full p-4 bg-muted rounded-lg space-y-3 animate-in fade-in duration-300"
-                            >
-                                <div className="flex items-start gap-3">
-                                        <Lightbulb className="h-5 w-5 text-blue-500 flex-shrink-0 mt-1" />
-                                    <div>
-                                        <h4 className="font-semibold text-blue-800 dark:text-blue-300">Answer</h4>
-                                        <p className="text-sm text-blue-700 dark:text-blue-400">{currentQuestion?.options[currentQuestion.correctAnswerIndex]}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-start gap-3">
-                                        <Lightbulb className="h-5 w-5 text-green-500 flex-shrink-0 mt-1" />
-                                    <div>
-                                        <h4 className="font-semibold text-green-800 dark:text-green-300">Explanation</h4>
-                                        <p className="text-sm text-green-700 dark:text-green-400">{currentQuestion?.explanation}</p>
-                                    </div>
+        ) : (
+            <Accordion type="single" collapsible className="w-full space-y-2">
+                {filteredQuestions.length > 0 ? filteredQuestions.map((q) => (
+                    <AccordionItem value={q.id} key={q.id} className="border bg-card rounded-lg px-4">
+                        <AccordionTrigger className="text-left hover:no-underline">
+                           <div className="flex-1 space-y-2">
+                             <p className="font-semibold">{q.questionText}</p>
+                             <div className="flex items-center gap-2">
+                                <Badge variant="secondary">{q.topic}</Badge>
+                                <Badge variant={q.difficulty === 'hard' ? 'destructive' : 'outline'}>{q.difficulty}</Badge>
+                                {q.sourceExamName && q.previousYear && (
+                                    <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100/80 dark:bg-yellow-900/50 dark:text-yellow-200">
+                                        <Target className="mr-2 h-3 w-3" />
+                                        {q.sourceExamName} {q.previousYear}
+                                    </Badge>
+                                )}
+                             </div>
+                           </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="space-y-3 pt-3">
+                             <div className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
+                                <Eye className="h-5 w-5 text-green-600 flex-shrink-0 mt-1" />
+                                <div>
+                                    <h4 className="font-semibold text-green-800 dark:text-green-300">Answer</h4>
+                                    <p className="text-sm text-green-700 dark:text-green-400">{q.options[0]}</p>
                                 </div>
                             </div>
-                        )}
-                    </CardFooter>
-                </Card>
-            </div>
-
-             <div className="flex justify-between items-center mt-6">
-                <Button onClick={handlePrevious} variant="outline" disabled={currentIndex === 0}>
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Previous
-                </Button>
-                <Button onClick={handleNext} disabled={currentIndex === questions.length - 1}>
-                    Next <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-            </div>
-        </div>
+                             <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                <Lightbulb className="h-5 w-5 text-blue-500 flex-shrink-0 mt-1" />
+                                <div>
+                                    <h4 className="font-semibold text-blue-800 dark:text-blue-300">Explanation</h4>
+                                    <p className="text-sm text-blue-700 dark:text-blue-400">{q.explanation}</p>
+                                </div>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                )) : (
+                    <Card className="text-center py-12">
+                        <CardContent>
+                            <BookOpen className="h-12 w-12 mx-auto text-muted-foreground" />
+                            <h3 className="mt-4 text-lg font-medium">No Questions Match Filters</h3>
+                            <p className="mt-1 text-sm text-muted-foreground">Try adjusting or clearing your filters to find more questions.</p>
+                        </CardContent>
+                    </Card>
+                )}
+            </Accordion>
+        )}
     </div>
   );
 }
