@@ -57,6 +57,7 @@ export interface TestAttempt {
   studentName?: string;
   testId: string;
   testTitle: string;
+  testType?: 'exam' | 'quiz';
   answers: { [questionId: string]: number };
   score: number;
   totalQuestions: number;

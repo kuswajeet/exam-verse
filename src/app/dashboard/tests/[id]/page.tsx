@@ -100,9 +100,10 @@ export default function TestTakerPage(props: { params: Promise<{ id: string }> }
     
     const attemptData: Omit<TestAttempt, 'id'> & { completedAt: any } = {
       userId: user.uid,
-      studentName: user.displayName || 'Anonymous',
+      studentName: user.displayName || 'Student',
       testId: test.id,
       testTitle: test.title,
+      testType: test.testType || 'exam',
       answers: userAnswers,
       score: score,
       totalQuestions: test.questions.length,
