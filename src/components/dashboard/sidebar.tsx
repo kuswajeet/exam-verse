@@ -16,6 +16,7 @@ import {
   PlusCircle,
   Trophy,
   BookOpen,
+  Zap,
 } from "lucide-react";
 import { usePathname } from 'next/navigation';
 
@@ -36,8 +37,16 @@ const navItems = [
   { href: "/dashboard/leaderboard", icon: Trophy, label: "Leaderboard" },
   { href: "/dashboard/analytics", icon: LineChart, label: "Analytics" },
   { href: "/dashboard/materials", icon: BookOpen, label: "Study Materials" },
-  { href: "/dashboard/settings", icon: Settings, label: "My Profile" },
 ];
+
+const practiceNavItems = [
+    { href: "/dashboard/practice/oneliners", icon: Zap, label: "One Liners" },
+]
+
+const profileNavItems = [
+    { href: "/dashboard/settings", icon: Settings, label: "My Profile" },
+]
+
 
 const adminNavItems = [
     { href: "/admin/manage-users", icon: Users, label: "Manage Users" },
@@ -83,6 +92,45 @@ export function DashboardSidebar() {
                 {item.label}
               </Link>
             )})}
+            
+            {/* Practice Section */}
+            <div className="my-2 mx-4 border-t" />
+            <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">Practice</p>
+            {practiceNavItems.map((item) => {
+                const isActive = pathname.startsWith(item.href);
+                return (
+                <Link
+                    key={item.label}
+                    href={item.href}
+                    className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted",
+                        isActive && 'bg-muted text-primary'
+                    )}
+                >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                </Link>
+            )})}
+
+             {/* Profile Section */}
+             <div className="my-2 mx-4 border-t" />
+             {profileNavItems.map((item) => {
+              const isActive = pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted",
+                    isActive && 'bg-muted text-primary'
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              )
+            })}
+
 
             {/* Admin Section */}
             {userRole === 'admin' && (
