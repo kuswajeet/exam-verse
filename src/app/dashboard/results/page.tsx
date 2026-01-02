@@ -29,7 +29,7 @@ export default function ResultsPage() {
   const firestore = useFirestore();
 
   const resultsQuery = useMemoFirebase(
-    () => (user && firestore ? query(collection(firestore, `results`), where('userId', '==', user.uid), orderBy('completedAt', 'desc')) : null),
+    () => (user && firestore ? query(collection(firestore, "results"), where('userId', '==', user.uid), orderBy('completedAt', 'desc')) : null),
     [user, firestore]
   );
   
