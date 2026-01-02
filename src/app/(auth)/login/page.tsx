@@ -1,74 +1,95 @@
 'use client';
 
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useAuth } from "@/firebase";
+import * as z from "zod";
+import { Loader2, Terminal } from "lucide-react";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal } from "lucide-react";
-import React from "react";
-import { useRouter } from "next/navigation";
 
-const loginSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+// CRITICAL FIX: Import 'auth' from the master file we just fixed
+import { auth } from "@/firebase";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import Link from 'next/link';
+
+const formSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 export default function LoginPage() {
-  const auth = useAuth();
-  const [authError, setAuthError] = React.useState<string | null>(null);
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
-  const form = useForm<z.infer<typeof loginSchema>>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
       password: "",
     },
   });
 
-  async function onSubmit(values: z.infer<typeof loginSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setLoading(true);
     setAuthError(null);
     try {
+      // Debug: Check if auth is loaded
+      if (!auth) {
+        throw new Error("Firebase Auth is not initialized. Please refresh the page.");
+      }
+
       await signInWithEmailAndPassword(auth, values.email, values.password);
-      // The useUser hook/AuthWrapper will handle the redirect on successful login
+      
+      // Redirect on success
       router.push('/dashboard');
     } catch (error: any) {
-       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        setAuthError('Invalid email or password. Please try again.');
-      } else {
-        setAuthError('An unexpected error occurred. Please try again later.');
-        console.error(error);
+      console.error("Login Error:", error);
+      let msg = "Failed to sign in.";
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
+        msg = "Invalid email or password.";
+      } else if (error.message) {
+        msg = error.message;
       }
+      setAuthError(msg);
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <Card className="mx-auto max-w-sm w-full">
+    <div className="flex h-screen w-full items-center justify-center px-4 bg-background">
+      <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
-            Enter your email below to login to your account
+            Enter your email below to login.
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {authError && (
+            <Alert variant="destructive" className="mb-4">
+              <Terminal className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{authError}</AlertDescription>
+            </Alert>
+          )}
+
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-              {authError && (
-                <Alert variant="destructive">
-                  <Terminal className="h-4 w-4" />
-                  <AlertTitle>Login Failed</AlertTitle>
-                  <AlertDescription>{authError}</AlertDescription>
-                </Alert>
-              )}
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
                 name="email"
@@ -76,7 +97,7 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="m@example.com" {...field} />
+                      <Input placeholder="name@example.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -87,12 +108,10 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                     <div className="flex items-center">
-                        <FormLabel>Password</FormLabel>
-                        <Link href="#" className="ml-auto inline-block text-sm underline">
-                          Forgot your password?
-                        </Link>
-                      </div>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Password</FormLabel>
+                      <Link href="#" className="text-sm underline">Forgot password?</Link>
+                    </div>
                     <FormControl>
                       <Input type="password" {...field} />
                     </FormControl>
@@ -100,22 +119,19 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "Logging in..." : "Login"}
-              </Button>
-              <Button variant="outline" className="w-full" type="button">
-                Login with Google
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Login
               </Button>
             </form>
           </Form>
-          <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="underline">
-              Sign up
-            </Link>
-          </div>
         </CardContent>
+        <CardFooter className="flex-col items-start gap-4">
+            <div className="text-center w-full text-sm text-muted-foreground">
+                No account? <Link href="/signup" className="text-primary hover:underline font-semibold">Sign up</Link>
+            </div>
+        </CardFooter>
       </Card>
     </div>
-  )
+  );
 }
