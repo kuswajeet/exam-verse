@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -19,25 +20,37 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, limit } from "firebase/firestore";
+import { collection, query, orderBy, limit, where, Query } from "firebase/firestore";
 import type { TestAttempt } from "@/lib/types";
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+
+const categories = ["engineering", "medical", "general", "physics", "chemistry", "maths", "biology"];
 
 export default function LeaderboardPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // Query the root 'results' collection
-  const leaderboardQuery = useMemoFirebase(
-    () => (firestore 
-        ? query(
-            collection(firestore, 'results'), 
-            orderBy('score', 'desc'),
-            limit(20)
-          ) 
-        : null),
-    [firestore]
-  );
+  const [filterType, setFilterType] = useState('all'); // 'all', 'exam', 'quiz'
+  const [filterCategory, setFilterCategory] = useState('all');
+
+  const leaderboardQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    
+    let q: Query = collection(firestore, 'results');
+
+    if (filterType !== 'all') {
+      q = query(q, where('testType', '==', filterType));
+    }
+    if (filterCategory !== 'all') {
+      q = query(q, where('category', '==', filterCategory));
+    }
+
+    q = query(q, orderBy('score', 'desc'), limit(10));
+    
+    return q;
+  }, [firestore, filterType, filterCategory]);
   
   const { data: attempts, isLoading } = useCollection<TestAttempt>(leaderboardQuery);
 
@@ -47,67 +60,106 @@ export default function LeaderboardPage() {
     if (rank === 3) return '🥉';
     return rank;
   };
+  
+  const getRowClass = (rank: number, isCurrentUser: boolean) => {
+    if (isCurrentUser) return "bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200/70 dark:hover:bg-blue-900/60";
+    if (rank === 1) return "bg-amber-100 dark:bg-amber-900/40";
+    if (rank === 2) return "bg-slate-100 dark:bg-slate-700/30";
+    if (rank === 3) return "bg-orange-100 dark:bg-orange-900/40";
+    return "";
+  }
+
+  const resetFilters = () => {
+    setFilterType('all');
+    setFilterCategory('all');
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-2xl">
-            <span role="img" aria-label="Trophy">🏆</span> Top Performers
-        </CardTitle>
-        <CardDescription>
-          See how you stack up against the competition. This is the overall leaderboard.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[50px]">Rank</TableHead>
-              <TableHead>Student</TableHead>
-              <TableHead>Test</TableHead>
-              <TableHead className="text-right">Score</TableHead>
-              <TableHead className="text-right">Accuracy</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-                 Array.from({ length: 10 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-5 w-8" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-40" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-6 w-16 ml-auto" /></TableCell>
+    <div className="space-y-6">
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-2xl">
+                    <span role="img" aria-label="Trophy">🏆</span> Hall of Fame
+                </CardTitle>
+                <CardDescription>
+                See how you stack up against the competition. This is the top 10 leaderboard.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col md:flex-row gap-4">
+                <Select value={filterType} onValueChange={setFilterType}>
+                    <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectValue placeholder="Filter by Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="exam">Exams</SelectItem>
+                        <SelectItem value="quiz">Quizzes</SelectItem>
+                    </SelectContent>
+                </Select>
+                 <Select value={filterCategory} onValueChange={setFilterCategory}>
+                    <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectValue placeholder="Filter by Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        {categories.map(cat => <SelectItem key={cat} value={cat} className="capitalize">{cat}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                <Button variant="outline" onClick={resetFilters}>Reset</Button>
+            </CardContent>
+        </Card>
+        
+        <Card>
+            <CardContent className="pt-6">
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead className="w-[50px]">Rank</TableHead>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Test</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Score</TableHead>
                     </TableRow>
-              ))) : attempts && attempts.length > 0 ? (
-              attempts.map((attempt, index) => {
-                const rank = index + 1;
-                const isCurrentUser = user?.uid === attempt.userId;
+                </TableHeader>
+                <TableBody>
+                    {isLoading ? (
+                        Array.from({ length: 10 }).map((_, i) => (
+                            <TableRow key={i}>
+                            <TableCell><Skeleton className="h-5 w-8" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                            <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
+                            </TableRow>
+                    ))) : attempts && attempts.length > 0 ? (
+                    attempts.map((attempt, index) => {
+                        const rank = index + 1;
+                        const isCurrentUser = user?.uid === attempt.userId;
 
-                return (
-                    <TableRow key={attempt.id} className={cn(isCurrentUser && "bg-primary/10")}>
-                        <TableCell className="font-bold text-lg">{getMedal(rank)}</TableCell>
-                        <TableCell className="font-medium">{attempt.studentName}</TableCell>
-                        <TableCell>{attempt.testTitle}</TableCell>
-                        <TableCell className="text-right">{attempt.score}/{attempt.totalQuestions}</TableCell>
-                        <TableCell className="text-right">
-                        <Badge variant={attempt.accuracy && attempt.accuracy > 80 ? 'default' : 'secondary'}>
-                            {attempt.accuracy?.toFixed(0) ?? 'N/A'}%
-                        </Badge>
-                        </TableCell>
-                    </TableRow>
-                )
-              })
-            ) : (
-                <TableRow>
-                    <TableCell colSpan={5} className="text-center h-24">
-                        No results have been recorded yet. Be the first!
-                    </TableCell>
-                </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+                        return (
+                            <TableRow key={attempt.id} className={getRowClass(rank, isCurrentUser)}>
+                                <TableCell className="font-bold text-lg">{getMedal(rank)}</TableCell>
+                                <TableCell className="font-medium">{attempt.studentName}</TableCell>
+                                <TableCell>{attempt.testTitle}</TableCell>
+                                <TableCell className="capitalize">{attempt.category}</TableCell>
+                                <TableCell className="capitalize">{attempt.testType}</TableCell>
+                                <TableCell className="text-right font-semibold">{attempt.score}/{attempt.totalQuestions}</TableCell>
+                            </TableRow>
+                        )
+                    })
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={6} className="text-center h-24">
+                                No champions found in this category yet. Be the first!
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    </div>
   );
 }
