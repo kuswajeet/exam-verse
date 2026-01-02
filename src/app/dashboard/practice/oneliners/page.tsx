@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, ArrowRight, Lightbulb, Zap, RefreshCw } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 export default function OneLinersPage() {
@@ -97,52 +96,42 @@ export default function OneLinersPage() {
                 </Button>
             </div>
             
-            <AnimatePresence mode="wait">
-                <motion.div
-                    key={currentIndex}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3 }}
-                >
-                    <Card className="min-h-[350px] flex flex-col justify-between shadow-lg">
-                        <CardHeader>
-                             <CardDescription>Question {currentIndex + 1} of {questions.length}</CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex-grow flex items-center justify-center text-center">
-                            <p className="text-xl md:text-2xl font-semibold">
-                                {currentQuestion?.questionText}
-                            </p>
-                        </CardContent>
-                        <CardFooter className="flex-col items-center gap-4">
-                            {!showAnswer ? (
-                                <Button onClick={() => setShowAnswer(true)} className="w-full max-w-xs">Show Answer</Button>
-                            ) : (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    className="w-full p-4 bg-muted rounded-lg space-y-3"
-                                >
-                                    <div className="flex items-start gap-3">
-                                         <Lightbulb className="h-5 w-5 text-blue-500 flex-shrink-0 mt-1" />
-                                        <div>
-                                            <h4 className="font-semibold text-blue-800 dark:text-blue-300">Answer</h4>
-                                            <p className="text-sm text-blue-700 dark:text-blue-400">{currentQuestion?.options[currentQuestion.correctAnswerIndex]}</p>
-                                        </div>
+            <div key={currentIndex}>
+                <Card className="min-h-[350px] flex flex-col justify-between shadow-lg transition-all duration-300">
+                    <CardHeader>
+                            <CardDescription>Question {currentIndex + 1} of {questions.length}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow flex items-center justify-center text-center">
+                        <p className="text-xl md:text-2xl font-semibold">
+                            {currentQuestion?.questionText}
+                        </p>
+                    </CardContent>
+                    <CardFooter className="flex-col items-center gap-4">
+                        {!showAnswer ? (
+                            <Button onClick={() => setShowAnswer(true)} className="w-full max-w-xs">Show Answer</Button>
+                        ) : (
+                            <div
+                                className="w-full p-4 bg-muted rounded-lg space-y-3 animate-in fade-in duration-300"
+                            >
+                                <div className="flex items-start gap-3">
+                                        <Lightbulb className="h-5 w-5 text-blue-500 flex-shrink-0 mt-1" />
+                                    <div>
+                                        <h4 className="font-semibold text-blue-800 dark:text-blue-300">Answer</h4>
+                                        <p className="text-sm text-blue-700 dark:text-blue-400">{currentQuestion?.options[currentQuestion.correctAnswerIndex]}</p>
                                     </div>
-                                    <div className="flex items-start gap-3">
-                                         <Lightbulb className="h-5 w-5 text-green-500 flex-shrink-0 mt-1" />
-                                        <div>
-                                            <h4 className="font-semibold text-green-800 dark:text-green-300">Explanation</h4>
-                                            <p className="text-sm text-green-700 dark:text-green-400">{currentQuestion?.explanation}</p>
-                                        </div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                        <Lightbulb className="h-5 w-5 text-green-500 flex-shrink-0 mt-1" />
+                                    <div>
+                                        <h4 className="font-semibold text-green-800 dark:text-green-300">Explanation</h4>
+                                        <p className="text-sm text-green-700 dark:text-green-400">{currentQuestion?.explanation}</p>
                                     </div>
-                                </motion.div>
-                            )}
-                        </CardFooter>
-                    </Card>
-                </motion.div>
-            </AnimatePresence>
+                                </div>
+                            </div>
+                        )}
+                    </CardFooter>
+                </Card>
+            </div>
 
              <div className="flex justify-between items-center mt-6">
                 <Button onClick={handlePrevious} variant="outline" disabled={currentIndex === 0}>
@@ -156,4 +145,3 @@ export default function OneLinersPage() {
     </div>
   );
 }
-
