@@ -19,21 +19,32 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, orderBy } from "firebase/firestore";
+import { collection, query, where } from "firebase/firestore";
 import type { TestAttempt } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import React from "react";
 
 export default function ResultsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
   const resultsQuery = useMemoFirebase(
-    () => (user && firestore ? query(collection(firestore, "results"), where('userId', '==', user.uid), orderBy('completedAt', 'desc')) : null),
+    () => (user && firestore ? query(collection(firestore, "results"), where('userId', '==', user.uid)) : null),
     [user, firestore]
   );
   
   const { data: attempts, isLoading: isLoadingAttempts } = useCollection<TestAttempt>(resultsQuery);
+
+  const sortedAttempts = React.useMemo(() => {
+    if (!attempts) return [];
+    // Sort by completion date, newest first. Handles potential nulls.
+    return [...attempts].sort((a, b) => {
+      const timeA = a.completedAt?.seconds || 0;
+      const timeB = b.completedAt?.seconds || 0;
+      return timeB - timeA;
+    });
+  }, [attempts]);
 
   return (
     <Card>
@@ -66,8 +77,8 @@ export default function ResultsPage() {
                       <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-32" /></TableCell>
                     </TableRow>
-              ))) : attempts && attempts.length > 0 ? (
-              attempts.map((attempt) => (
+              ))) : sortedAttempts && sortedAttempts.length > 0 ? (
+              sortedAttempts.map((attempt) => (
                 <TableRow key={attempt.id}>
                   <TableCell className="font-medium">{attempt.testTitle}</TableCell>
                   <TableCell>{attempt.score}/{attempt.totalQuestions}</TableCell>
