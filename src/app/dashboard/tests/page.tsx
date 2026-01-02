@@ -9,172 +9,219 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import type { Test } from "@/lib/types";
-import { collection } from "firebase/firestore";
+import { collection, query } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useMemo } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Lock } from "lucide-react";
-import { filterOptions, getExamsForCategory, getSubjectsForExam } from "@/lib/filter-options";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Lock, FileText, View } from "lucide-react";
+
+type GroupedExams = {
+  [category: string]: {
+    [examName: string]: {
+      tests: Test[];
+      subTypes: {
+        full: Test[];
+        subject: Test[];
+        topic: Test[];
+      };
+      bundlePrice: number;
+      totalTests: number;
+    };
+  };
+};
 
 export default function TestsPage() {
-  const { user } = useUser();
   const firestore = useFirestore();
 
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedExam, setSelectedExam] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('');
+  // Mock state for purchased exams
+  const [purchasedExams, setPurchasedExams] = useState<Set<string>>(new Set(['jee-main']));
 
   const testsQuery = useMemoFirebase(
-    () => (firestore ? collection(firestore, "tests") : null),
+    () => (firestore ? query(collection(firestore, "tests")) : null),
     [firestore]
   );
-  const { data: tests, isLoading: isLoadingTests } = useCollection<Test>(testsQuery);
+  const { data: allTests, isLoading: isLoadingTests } = useCollection<Test>(testsQuery);
 
-  const handleCategoryChange = (value: string) => {
-    setSelectedCategory(value);
-    setSelectedExam('');
-    setSelectedSubject('');
-  };
+  const { groupedExams, categories } = useMemo(() => {
+    if (!allTests) return { groupedExams: {}, categories: [] };
 
-  const handleExamChange = (value: string) => {
-    setSelectedExam(value);
-    setSelectedSubject('');
+    const grouped: GroupedExams = {};
+
+    allTests.forEach(test => {
+      const category = test.category || 'General';
+      const examName = test.examName || 'Unnamed Exam';
+
+      if (!grouped[category]) {
+        grouped[category] = {};
+      }
+      if (!grouped[category][examName]) {
+        grouped[category][examName] = {
+          tests: [],
+          subTypes: { full: [], subject: [], topic: [] },
+          bundlePrice: 0,
+          totalTests: 0,
+        };
+      }
+      
+      const examGroup = grouped[category][examName];
+      examGroup.tests.push(test);
+      examGroup.totalTests += 1;
+      
+      // The first non-zero examPrice found becomes the bundle price
+      if (examGroup.bundlePrice === 0 && test.examPrice && test.examPrice > 0) {
+        examGroup.bundlePrice = test.examPrice;
+      }
+
+      switch (test.testSubType) {
+        case 'full':
+          examGroup.subTypes.full.push(test);
+          break;
+        case 'subject':
+          examGroup.subTypes.subject.push(test);
+          break;
+        case 'topic':
+          examGroup.subTypes.topic.push(test);
+          break;
+        default:
+          // Maybe push to a default/uncategorized list if needed
+          break;
+      }
+    });
+    
+    return { groupedExams: grouped, categories: Object.keys(grouped) };
+  }, [allTests]);
+
+  const handleUnlockBundle = (examName: string) => {
+    setPurchasedExams(prev => new Set(prev).add(examName));
   };
   
-  const filteredTests = useMemo(() => {
-    if (!tests) return [];
-    return tests.filter(test => {
-      const categoryMatch = !selectedCategory || test.category === selectedCategory;
-      const examMatch = !selectedExam || test.examName === selectedExam;
-      const subjectMatch = !selectedSubject || test.subject === selectedSubject;
-      return categoryMatch && examMatch && subjectMatch;
-    });
-  }, [tests, selectedCategory, selectedExam, selectedSubject]);
-
-  const examsForCategory = useMemo(() => getExamsForCategory(selectedCategory), [selectedCategory]);
-  const subjectsForExam = useMemo(() => getSubjectsForExam(selectedCategory, selectedExam), [selectedCategory, selectedExam]);
-
-  const isLoading = isLoadingTests;
+  if (isLoadingTests) {
+      return (
+        <div className="space-y-6">
+            <Skeleton className="h-10 w-1/3" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.from({length: 3}).map((_, i) => (
+                    <Card key={i}>
+                        <CardHeader><Skeleton className="h-7 w-3/4" /><Skeleton className="h-4 w-1/2 mt-2" /></CardHeader>
+                        <CardContent><Skeleton className="h-20 w-full" /></CardContent>
+                        <CardFooter><Skeleton className="h-10 w-full" /></CardFooter>
+                    </Card>
+                ))}
+            </div>
+        </div>
+      )
+  }
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Available Tests</CardTitle>
-          <CardDescription>
-            Choose a test to start preparing. Good luck!
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col md:flex-row gap-4">
-            <Select onValueChange={handleCategoryChange} value={selectedCategory}>
-                <SelectTrigger>
-                    <SelectValue placeholder="Select Category" />
-                </SelectTrigger>
-                <SelectContent>
-                    {filterOptions.map(cat => (
-                        <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-             <Select onValueChange={handleExamChange} value={selectedExam} disabled={!selectedCategory}>
-                <SelectTrigger>
-                    <SelectValue placeholder="Select Exam" />
-                </SelectTrigger>
-                <SelectContent>
-                    {examsForCategory.map(exam => (
-                         <SelectItem key={exam.value} value={exam.value}>{exam.label}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-            <Select onValueChange={setSelectedSubject} value={selectedSubject} disabled={!selectedExam}>
-                <SelectTrigger>
-                    <SelectValue placeholder="Select Subject" />
-                </SelectTrigger>
-                <SelectContent>
-                    {subjectsForExam.map(subj => (
-                        <SelectItem key={subj.value} value={subj.value}>{subj.label}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-            <Button onClick={() => { setSelectedCategory(''); setSelectedExam(''); setSelectedSubject(''); }} variant="outline">Clear Filters</Button>
-        </CardContent>
-      </Card>
-      <Card>
-      <CardContent className="pt-6">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Test Title</TableHead>
-              <TableHead>Subject</TableHead>
-              <TableHead>Questions</TableHead>
-              <TableHead>Duration</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-12" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-12" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-8 w-24" /></TableCell>
-                </TableRow>
-              ))
-            ) : filteredTests.length > 0 ? (
-              filteredTests.map((test) => (
-              <TableRow key={test.id}>
-                <TableCell className="font-medium">{test.title}</TableCell>
-                <TableCell>{test.subject}</TableCell>
-                <TableCell>{test.questionCount || 0}</TableCell>
-                <TableCell>{test.durationMinutes} min</TableCell>
-                <TableCell>
-                  {test.isFree ? (
-                    <Badge variant="outline">Free</Badge>
-                  ) : (
-                    `$${test.price.toFixed(2)}`
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                    {test.isFree ? (
-                        <Button asChild>
-                            <Link href={`/dashboard/tests/${test.id}`}>Start Test</Link>
+        <Card>
+            <CardHeader>
+            <CardTitle>Available Test Series</CardTitle>
+            <CardDescription>
+                Choose a test series to start preparing. Good luck!
+            </CardDescription>
+            </CardHeader>
+        </Card>
+      <Tabs defaultValue={categories[0]} className="w-full">
+        <TabsList>
+          {categories.map(category => (
+            <TabsTrigger key={category} value={category}>{category}</TabsTrigger>
+          ))}
+        </TabsList>
+        {categories.map(category => (
+          <TabsContent key={category} value={category}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+              {Object.keys(groupedExams[category] || {}).map(examName => {
+                const bundle = groupedExams[category][examName];
+                const isPurchased = purchasedExams.has(examName) || bundle.bundlePrice === 0;
+
+                return (
+                  <Card key={examName} className="flex flex-col">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle>{examName}</CardTitle>
+                          <CardDescription>{bundle.totalTests} Total Tests</CardDescription>
+                        </div>
+                        <Badge variant={isPurchased ? "outline" : "default"}>
+                          {bundle.bundlePrice > 0 ? `₹${bundle.bundlePrice}` : "Free"}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                      <Accordion type="multiple" className="w-full">
+                        {bundle.subTypes.full.length > 0 && (
+                          <AccordionItem value="full-mocks">
+                            <AccordionTrigger>Full Mocks ({bundle.subTypes.full.length})</AccordionTrigger>
+                            <AccordionContent>
+                              <TestList tests={bundle.subTypes.full} isPurchased={isPurchased} />
+                            </AccordionContent>
+                          </AccordionItem>
+                        )}
+                        {bundle.subTypes.subject.length > 0 && (
+                          <AccordionItem value="subject-tests">
+                            <AccordionTrigger>Subject Tests ({bundle.subTypes.subject.length})</AccordionTrigger>
+                            <AccordionContent>
+                              <TestList tests={bundle.subTypes.subject} isPurchased={isPurchased} />
+                            </AccordionContent>
+                          </AccordionItem>
+                        )}
+                        {bundle.subTypes.topic.length > 0 && (
+                          <AccordionItem value="topic-tests">
+                            <AccordionTrigger>Topic Tests ({bundle.subTypes.topic.length})</AccordionTrigger>
+                            <AccordionContent>
+                               <TestList tests={bundle.subTypes.topic} isPurchased={isPurchased} />
+                            </AccordionContent>
+                          </AccordionItem>
+                        )}
+                      </Accordion>
+                    </CardContent>
+                    <CardFooter>
+                      {isPurchased ? (
+                        <Button variant="outline" className="w-full" asChild>
+                            <Link href={`#`}>
+                                <View className="mr-2" /> View Included Tests
+                            </Link>
                         </Button>
-                    ) : (
-                        <Button disabled>
-                            <Lock className="mr-2 h-4 w-4" />
-                            Purchase
+                      ) : (
+                        <Button className="w-full" onClick={() => handleUnlockBundle(examName)}>
+                          <Lock className="mr-2" /> Unlock Bundle (₹{bundle.bundlePrice})
                         </Button>
-                    )}
-                </TableCell>
-              </TableRow>
-            ))) : (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
-                  No tests match your filter criteria. Try clearing the filters.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-      </Card>
+                      )}
+                    </CardFooter>
+                  </Card>
+                );
+              })}
+            </div>
+          </TabsContent>
+        ))}
+      </Tabs>
     </div>
   );
 }
+
+// Helper component to render a list of tests within an accordion
+const TestList = ({ tests, isPurchased }: { tests: Test[], isPurchased: boolean }) => (
+    <div className="space-y-2 pl-2">
+        {tests.map(test => (
+            <div key={test.id} className="flex justify-between items-center p-2 rounded-md hover:bg-muted">
+                <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-muted-foreground"/>
+                    <span className="text-sm font-medium">{test.title}</span>
+                </div>
+                {isPurchased ? (
+                    <Button size="sm" variant="ghost" asChild>
+                        <Link href={`/dashboard/tests/${test.id}`}>Start</Link>
+                    </Button>
+                ) : (
+                    <Lock className="h-4 w-4 text-muted-foreground" />
+                )}
+            </div>
+        ))}
+    </div>
+)
