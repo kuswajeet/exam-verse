@@ -8,8 +8,9 @@ import type { Question } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, ArrowRight, Lightbulb, Zap, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Lightbulb, Zap, RefreshCw, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 export default function OneLinersPage() {
   const firestore = useFirestore();
@@ -99,7 +100,15 @@ export default function OneLinersPage() {
             <div key={currentIndex}>
                 <Card className="min-h-[350px] flex flex-col justify-between shadow-lg transition-all duration-300">
                     <CardHeader>
+                        <div className="flex justify-between items-start">
                             <CardDescription>Question {currentIndex + 1} of {questions.length}</CardDescription>
+                             {currentQuestion?.sourceExamName && currentQuestion?.previousYear && (
+                                <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100/80 dark:bg-yellow-900/50 dark:text-yellow-200">
+                                    <Target className="mr-2 h-3 w-3" />
+                                    {currentQuestion.sourceExamName} {currentQuestion.previousYear}
+                                </Badge>
+                            )}
+                        </div>
                     </CardHeader>
                     <CardContent className="flex-grow flex items-center justify-center text-center">
                         <p className="text-xl md:text-2xl font-semibold">

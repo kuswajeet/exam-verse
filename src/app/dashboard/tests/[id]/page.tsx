@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, use } from 'react';
@@ -7,13 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, ArrowRight, Check, Clock } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Clock, Target } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import type { Test, TestWithQuestions, Question, TestAttempt } from '@/lib/types';
 import { doc, collection, serverTimestamp, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 async function getTestWithQuestions(firestore: any, testId: string): Promise<TestWithQuestions | null> {
     const testRef = doc(firestore, 'tests', testId);
@@ -230,7 +232,13 @@ export default function TestTakerPage(props: { params: Promise<{ id: string }> }
         </CardHeader>
         <CardContent className="space-y-8">
             <div>
-              <p className="font-semibold text-lg mb-4">{currentQuestionIndex + 1}. {currentQuestion.questionText}</p>
+              <p className="font-semibold text-lg mb-2">{currentQuestionIndex + 1}. {currentQuestion.questionText}</p>
+              {currentQuestion?.sourceExamName && currentQuestion?.previousYear && (
+                    <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100/80 dark:bg-yellow-900/50 dark:text-yellow-200 mb-4">
+                        <Target className="mr-2 h-3 w-3" />
+                        {currentQuestion.sourceExamName} {currentQuestion.previousYear}
+                    </Badge>
+                )}
               <RadioGroup
                 value={userAnswers[currentQuestion.id]?.toString()}
                 onValueChange={(value) => handleAnswerSelect(currentQuestion.id, parseInt(value))}
