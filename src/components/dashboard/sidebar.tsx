@@ -33,7 +33,7 @@ const navItems = [
   { href: "/dashboard/tests", icon: BookCopy, label: "Tests" },
   { href: "/dashboard/results", icon: GraduationCap, label: "Results" },
   { href: "/dashboard/leaderboard", icon: Trophy, label: "Leaderboard" },
-  { href: "/dashboard/analytics", icon: LineChart, label: "Analytics", disabled: true },
+  { href: "/dashboard/analytics", icon: LineChart, label: "Analytics" },
   { href: "/dashboard/settings", icon: Settings, label: "My Profile" },
 ];
 
