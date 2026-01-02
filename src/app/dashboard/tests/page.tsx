@@ -1,30 +1,23 @@
 'use client';
 
-import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter
-} from "@/components/ui/card";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import type { Test } from "@/lib/types";
-import { collection, query } from "firebase/firestore";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useMemo } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Lock, FileText, View } from "lucide-react";
+import { useState, useMemo } from 'react';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import type { Test } from '@/lib/types';
+import { collection, query } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
+import { Lock, FileText, View, ShoppingCart, PlayCircle } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useRouter } from 'next/navigation';
 
 type GroupedExams = {
   [category: string]: {
     [examName: string]: {
-      tests: Test[];
-      subTypes: {
+      tests: {
         full: Test[];
         subject: Test[];
         topic: Test[];
@@ -37,9 +30,10 @@ type GroupedExams = {
 
 export default function TestsPage() {
   const firestore = useFirestore();
+  const router = useRouter();
 
   // Mock state for purchased exams
-  const [purchasedExams, setPurchasedExams] = useState<Set<string>>(new Set(['jee-main']));
+  const [purchasedBundles, setPurchasedBundles] = useState<Set<string>>(new Set(['jee-main']));
 
   const testsQuery = useMemoFirebase(
     () => (firestore ? query(collection(firestore, "tests")) : null),
@@ -54,22 +48,21 @@ export default function TestsPage() {
 
     allTests.forEach(test => {
       const category = test.category || 'General';
-      const examName = test.examName || 'Unnamed Exam';
+      const examName = test.examName || 'General Practice';
+      const subType = test.testSubType || 'topic';
 
       if (!grouped[category]) {
         grouped[category] = {};
       }
       if (!grouped[category][examName]) {
         grouped[category][examName] = {
-          tests: [],
-          subTypes: { full: [], subject: [], topic: [] },
+          tests: { full: [], subject: [], topic: [] },
           bundlePrice: 0,
           totalTests: 0,
         };
       }
       
       const examGroup = grouped[category][examName];
-      examGroup.tests.push(test);
       examGroup.totalTests += 1;
       
       // The first non-zero examPrice found becomes the bundle price
@@ -77,27 +70,20 @@ export default function TestsPage() {
         examGroup.bundlePrice = test.examPrice;
       }
 
-      switch (test.testSubType) {
-        case 'full':
-          examGroup.subTypes.full.push(test);
-          break;
-        case 'subject':
-          examGroup.subTypes.subject.push(test);
-          break;
-        case 'topic':
-          examGroup.subTypes.topic.push(test);
-          break;
-        default:
-          // Maybe push to a default/uncategorized list if needed
-          break;
-      }
+      if (subType === 'full') examGroup.tests.full.push(test);
+      else if (subType === 'subject') examGroup.tests.subject.push(test);
+      else examGroup.tests.topic.push(test);
     });
     
-    return { groupedExams: grouped, categories: Object.keys(grouped) };
+    return { groupedExams: grouped, categories: Object.keys(grouped).sort() };
   }, [allTests]);
 
-  const handleUnlockBundle = (examName: string) => {
-    setPurchasedExams(prev => new Set(prev).add(examName));
+  const handlePurchase = (examName: string, price: number) => {
+    const confirmed = confirm(`Unlock the "${examName}" bundle for ₹${price}?`);
+    if (confirmed) {
+      setPurchasedBundles(prev => new Set(prev).add(examName));
+      alert("Purchase Successful! Tests Unlocked.");
+    }
   };
   
   if (isLoadingTests) {
@@ -119,109 +105,110 @@ export default function TestsPage() {
 
   return (
     <div className="space-y-6">
-        <Card>
-            <CardHeader>
-            <CardTitle>Available Test Series</CardTitle>
-            <CardDescription>
-                Choose a test series to start preparing. Good luck!
-            </CardDescription>
-            </CardHeader>
-        </Card>
-      <Tabs defaultValue={categories[0]} className="w-full">
-        <TabsList>
-          {categories.map(category => (
-            <TabsTrigger key={category} value={category}>{category}</TabsTrigger>
-          ))}
-        </TabsList>
-        {categories.map(category => (
-          <TabsContent key={category} value={category}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-              {Object.keys(groupedExams[category] || {}).map(examName => {
-                const bundle = groupedExams[category][examName];
-                const isPurchased = purchasedExams.has(examName) || bundle.bundlePrice === 0;
+      <Card>
+        <CardHeader>
+          <CardTitle>Available Test Series</CardTitle>
+          <CardDescription>
+            Select an exam bundle to view full mock tests, subject tests, and topic practice.
+          </CardDescription>
+        </CardHeader>
+      </Card>
 
-                return (
-                  <Card key={examName} className="flex flex-col">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle>{examName}</CardTitle>
-                          <CardDescription>{bundle.totalTests} Total Tests</CardDescription>
-                        </div>
-                        <Badge variant={isPurchased ? "outline" : "default"}>
-                          {bundle.bundlePrice > 0 ? `₹${bundle.bundlePrice}` : "Free"}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="flex-grow">
-                      <Accordion type="multiple" className="w-full">
-                        {bundle.subTypes.full.length > 0 && (
-                          <AccordionItem value="full-mocks">
-                            <AccordionTrigger>Full Mocks ({bundle.subTypes.full.length})</AccordionTrigger>
-                            <AccordionContent>
-                              <TestList tests={bundle.subTypes.full} isPurchased={isPurchased} />
+      {categories.length === 0 ? (
+          <div className="text-center p-12 border rounded-lg bg-muted">
+            <p>No tests available right now. An admin needs to create some!</p>
+          </div>
+      ) : (
+        <Tabs defaultValue={categories[0]} className="w-full">
+            <TabsList>
+            {categories.map(category => (
+                <TabsTrigger key={category} value={category}>{category}</TabsTrigger>
+            ))}
+            </TabsList>
+            {categories.map(category => (
+            <TabsContent key={category} value={category}>
+                <Accordion type="multiple" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-6">
+                {Object.entries(groupedExams[category] || {}).map(([examName, bundle]) => {
+                    const isPurchased = purchasedBundles.has(examName) || bundle.bundlePrice === 0;
+                    const totalTests = bundle.totalTests;
+
+                    return (
+                        <AccordionItem key={examName} value={examName} className="border rounded-lg bg-card shadow-sm">
+                            <Card className="flex flex-col border-0 shadow-none">
+                                <CardHeader>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <CardTitle>{examName}</CardTitle>
+                                            <CardDescription>{totalTests} Total Tests</CardDescription>
+                                        </div>
+                                        {bundle.bundlePrice > 0 ? (
+                                            <Badge variant={isPurchased ? 'default' : 'secondary'} className={isPurchased ? "bg-green-600 hover:bg-green-700" : ""}>
+                                                {isPurchased ? "Purchased" : `₹${bundle.bundlePrice}`}
+                                            </Badge>
+                                        ) : (
+                                            <Badge variant="outline" className="text-green-600 border-green-600">Free</Badge>
+                                        )}
+                                    </div>
+                                </CardHeader>
+                                <CardFooter className="flex items-center gap-3">
+                                     {!isPurchased && (
+                                        <Button onClick={() => handlePurchase(examName, bundle.bundlePrice)} className="flex-1 bg-accent hover:bg-accent/90">
+                                            <ShoppingCart size={16} /> Unlock Bundle
+                                        </Button>
+                                    )}
+                                    <AccordionTrigger asChild className="flex-1 hover:no-underline p-0">
+                                        <Button variant="outline" className="w-full">
+                                            <View size={16} /> {isPurchased ? "View Tests" : "View Contents"}
+                                        </Button>
+                                    </AccordionTrigger>
+                                </CardFooter>
+                            </Card>
+
+                            <AccordionContent className="px-6 pb-4">
+                                <div className="space-y-6">
+                                    {bundle.tests.full.length > 0 && <TestSection title="🏆 Full Mock Tests" tests={bundle.tests.full} isUnlocked={isPurchased} router={router} />}
+                                    {bundle.tests.subject.length > 0 && <TestSection title="📚 Subject Wise Tests" tests={bundle.tests.subject} isUnlocked={isPurchased} router={router} />}
+                                    {bundle.tests.topic.length > 0 && <TestSection title="📝 Topic Wise Practice" tests={bundle.tests.topic} isUnlocked={isPurchased} router={router} />}
+                                    {totalTests === 0 && <p className="text-muted-foreground italic text-center">No tests added to this bundle yet.</p>}
+                                </div>
                             </AccordionContent>
-                          </AccordionItem>
-                        )}
-                        {bundle.subTypes.subject.length > 0 && (
-                          <AccordionItem value="subject-tests">
-                            <AccordionTrigger>Subject Tests ({bundle.subTypes.subject.length})</AccordionTrigger>
-                            <AccordionContent>
-                              <TestList tests={bundle.subTypes.subject} isPurchased={isPurchased} />
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
-                        {bundle.subTypes.topic.length > 0 && (
-                          <AccordionItem value="topic-tests">
-                            <AccordionTrigger>Topic Tests ({bundle.subTypes.topic.length})</AccordionTrigger>
-                            <AccordionContent>
-                               <TestList tests={bundle.subTypes.topic} isPurchased={isPurchased} />
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
-                      </Accordion>
-                    </CardContent>
-                    <CardFooter>
-                      {isPurchased ? (
-                        <Button variant="outline" className="w-full" asChild>
-                            <Link href={`#`}>
-                                <View className="mr-2" /> View Included Tests
-                            </Link>
-                        </Button>
-                      ) : (
-                        <Button className="w-full" onClick={() => handleUnlockBundle(examName)}>
-                          <Lock className="mr-2" /> Unlock Bundle (₹{bundle.bundlePrice})
-                        </Button>
-                      )}
-                    </CardFooter>
-                  </Card>
-                );
-              })}
-            </div>
-          </TabsContent>
-        ))}
-      </Tabs>
+                        </AccordionItem>
+                    );
+                })}
+                </Accordion>
+            </TabsContent>
+            ))}
+        </Tabs>
+      )}
     </div>
   );
 }
 
-// Helper component to render a list of tests within an accordion
-const TestList = ({ tests, isPurchased }: { tests: Test[], isPurchased: boolean }) => (
-    <div className="space-y-2 pl-2">
-        {tests.map(test => (
-            <div key={test.id} className="flex justify-between items-center p-2 rounded-md hover:bg-muted">
-                <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-muted-foreground"/>
-                    <span className="text-sm font-medium">{test.title}</span>
-                </div>
-                {isPurchased ? (
-                    <Button size="sm" variant="ghost" asChild>
-                        <Link href={`/dashboard/tests/${test.id}`}>Start</Link>
-                    </Button>
-                ) : (
-                    <Lock className="h-4 w-4 text-muted-foreground" />
-                )}
+function TestSection({ title, tests, isUnlocked, router }: { title: string; tests: Test[]; isUnlocked: boolean; router: any; }) {
+  return (
+    <div className="border rounded-md overflow-hidden">
+      <div className="bg-muted px-4 py-2 font-semibold border-b text-card-foreground">{title}</div>
+      <div className="divide-y">
+        {tests.map((test: Test) => (
+          <div key={test.id} className="p-3 flex items-center justify-between hover:bg-muted/50 transition-colors">
+            <div>
+              <p className="font-medium">{test.title}</p>
+              <div className="flex gap-4 text-xs text-muted-foreground mt-1">
+                <span>{test.questionCount || 0} Questions</span> • <span>{test.durationMinutes} mins</span>
+              </div>
             </div>
+            
+            <Button 
+              size="sm" 
+              variant={isUnlocked ? "default" : "secondary"}
+              disabled={!isUnlocked} 
+              onClick={() => router.push(`/dashboard/tests/${test.id}`)}
+            >
+              {isUnlocked ? <><PlayCircle size={16} /> Start</> : <><Lock size={16} /> Locked</>}
+            </Button>
+          </div>
         ))}
+      </div>
     </div>
-)
+  );
+}
