@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview An AI tool to automatically generate a batch of relevant test questions.
  *
