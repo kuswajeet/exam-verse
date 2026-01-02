@@ -53,11 +53,13 @@ export interface TestWithQuestions extends Test {
 export interface TestAttempt {
   id: string;
   userId: string;
+  studentName?: string;
   testId: string;
   testTitle: string;
   answers: { [questionId: string]: number };
   score: number;
   totalQuestions: number;
+  accuracy?: number;
   completedAt: Timestamp;
 }
 

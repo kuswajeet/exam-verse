@@ -14,6 +14,7 @@ import {
   Upload,
   Settings,
   PlusCircle,
+  Trophy,
 } from "lucide-react";
 import { usePathname } from 'next/navigation';
 
@@ -31,6 +32,7 @@ const navItems = [
   { href: "/dashboard", icon: Home, label: "Overview" },
   { href: "/dashboard/tests", icon: BookCopy, label: "Tests" },
   { href: "/dashboard/results", icon: GraduationCap, label: "Results" },
+  { href: "/dashboard/leaderboard", icon: Trophy, label: "Leaderboard" },
   { href: "/dashboard/analytics", icon: LineChart, label: "Analytics", disabled: true },
   { href: "/dashboard/settings", icon: Settings, label: "My Profile" },
 ];
