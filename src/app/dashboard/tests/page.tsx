@@ -156,10 +156,10 @@ export default function TestsPage() {
                                             <ShoppingCart size={16} /> Unlock Bundle
                                         </Button>
                                     )}
-                                    <AccordionTrigger asChild className="flex-1 hover:no-underline p-0">
-                                        <Button variant="outline" className="w-full">
-                                            <View size={16} /> {isPurchased ? "View Tests" : "View Contents"}
-                                        </Button>
+                                    <AccordionTrigger className="flex-1 hover:no-underline p-0 decoration-0" asChild>
+                                        <span className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full cursor-pointer">
+                                          <View size={16} /> {isPurchased ? "View Tests" : "View Contents"}
+                                        </span>
                                     </AccordionTrigger>
                                 </CardFooter>
                             </Card>
