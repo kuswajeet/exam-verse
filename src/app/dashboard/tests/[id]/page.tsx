@@ -1,38 +1,37 @@
-
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { notFound, useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useFirestore, useUser } from '@/firebase';
+import type { Test, Question, TestWithQuestions } from '@/lib/types';
+
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, ArrowRight, Check, Clock, Target } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import type { Test, TestWithQuestions, Question, TestAttempt } from '@/lib/types';
-import { doc, collection, serverTimestamp, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Clock, HelpCircle, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 
+// Helper function to fetch test and its questions, handling Firestore's 'in' query limit
 async function getTestWithQuestions(firestore: any, testId: string): Promise<TestWithQuestions | null> {
     const testRef = doc(firestore, 'tests', testId);
-    const testSnapshot = await getDocs(query(collection(firestore, 'tests'), where('__name__', '==', testId)));
+    const testSnapshot = await getDoc(testRef);
     
-    if (testSnapshot.empty) {
+    if (!testSnapshot.exists()) {
         return null;
     }
 
-    const testData = { id: testSnapshot.docs[0].id, ...testSnapshot.docs[0].data() } as Test;
+    const testData = { id: testSnapshot.id, ...testSnapshot.data() } as Test;
     
     if (!testData.questionIds || testData.questionIds.length === 0) {
         return { ...testData, questions: [] };
     }
     
-    // Firestore 'in' queries are limited to 30 elements. 
-    // If a test can have more, this needs to be chunked.
+    // Firestore 'in' queries are limited to 30 elements. We need to chunk requests.
     const questionChunks: string[][] = [];
     for (let i = 0; i < testData.questionIds.length; i += 30) {
         questionChunks.push(testData.questionIds.slice(i, i + 30));
@@ -51,272 +50,220 @@ async function getTestWithQuestions(firestore: any, testId: string): Promise<Tes
         });
     });
 
-    // This ensures question order is preserved from the test document
+    // Ensure question order is preserved from the test document
     const questions = testData.questionIds.map(id => questionsMap.get(id)).filter((q): q is Question => !!q);
     
     return { ...testData, questions };
 }
 
 
-export default function TestTakerPage(props: { params: Promise<{ id: string }> }) {
-  const { id } = use(props.params);
+export default function TestPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { user } = useUser();
   const firestore = useFirestore();
+  const { user } = useUser();
+  const { toast } = useToast();
+  const { id: testId } = params;
 
   const [test, setTest] = useState<TestWithQuestions | null>(null);
-  const [isLoadingTest, setIsLoadingTest] = useState(true);
-  
+  const [isLoading, setIsLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [userAnswers, setUserAnswers] = useState<Record<string, number>>({});
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!firestore) return;
-    const fetchTest = async () => {
-        setIsLoadingTest(true);
-        const testWithQuestions = await getTestWithQuestions(firestore, id);
-        setTest(testWithQuestions);
-        if (testWithQuestions) {
-            setTimeLeft(testWithQuestions.durationMinutes * 60);
-        }
-        setIsLoadingTest(false);
-    }
-    fetchTest();
-  }, [firestore, id]);
-  
-  const finishTest = async () => {
-    if (!user || !firestore || !test || isSubmitting) return;
-    setIsSubmitting(true);
+    if (!firestore || !testId) return;
 
-    const score = Object.keys(userAnswers).reduce((acc, qId) => {
-      const question = test.questions.find(q => q.id === qId);
-      if (question && question.correctAnswerIndex === userAnswers[qId]) {
-        return acc + 1;
+    async function fetchTest() {
+      try {
+        setIsLoading(true);
+        const testData = await getTestWithQuestions(firestore, testId);
+        if (testData) {
+          setTest(testData);
+          setTimeLeft(testData.durationMinutes * 60);
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: 'Test not found.' });
+        }
+      } catch (error) {
+        console.error('Error fetching test:', error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to load the test.' });
+      } finally {
+        setIsLoading(false);
       }
-      return acc;
-    }, 0);
-    
-    const resultsCollection = collection(firestore, 'results');
-    
-    const attemptData: Omit<TestAttempt, 'id'> & { completedAt: any } = {
-      userId: user.uid,
-      studentName: user.displayName || 'Student',
-      testId: test.id,
-      testTitle: test.title,
-      testType: test.testType || 'exam',
-      category: test.category || 'General',
-      examName: test.examName || 'General',
-      answers: userAnswers,
-      score: score,
-      totalQuestions: test.questions.length,
-      accuracy: (score / test.questions.length) * 100,
-      completedAt: serverTimestamp(),
-    };
-
-    try {
-      // We await this to ensure the result is saved before redirecting.
-      const docRef = await addDoc(resultsCollection, attemptData);
-      // Redirect to the specific result page.
-      router.push(`/dashboard/results/${docRef.id}`);
-    } catch (error) {
-        console.error("Failed to save test result:", error);
-        // Fallback redirect in case of error.
-        router.push(`/dashboard/results`);
     }
-  }
 
+    fetchTest();
+  }, [firestore, testId, toast]);
+
+  // Timer effect
   useEffect(() => {
-    if (!test || timeLeft <= 0 || isSubmitting) {
-        if(test && timeLeft <= 0 && currentQuestionIndex > 0 && !isSubmitting) {
-             finishTest();
-        }
-      return;
-    }
-    const timer = setInterval(() => {
-      setTimeLeft(prevTime => {
-        if (prevTime <= 1) {
-          clearInterval(timer);
-          finishTest(); // Auto-submit when time is up
-          return 0;
-        }
-        return prevTime - 1;
-      });
+    if (isLoading || timeLeft <= 0 || isSubmitting) return;
+
+    const timerId = setInterval(() => {
+      setTimeLeft(prevTime => prevTime - 1);
     }, 1000);
 
-    return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [test, timeLeft, isSubmitting]);
+    if (timeLeft <= 1) {
+      clearInterval(timerId);
+      handleSubmit(); // Auto-submit when time is up
+    }
 
-  if (isLoadingTest) {
-      return (
-        <div className="flex gap-6">
-            <div className="w-3/4 space-y-4">
-              <Card>
-                  <CardHeader>
-                      <Skeleton className="h-8 w-3/4" />
-                      <Skeleton className="h-4 w-1/2" />
-                      <Skeleton className="h-4 w-full mt-4" />
-                  </CardHeader>
-                  <CardContent className="space-y-8">
-                       <div className="space-y-4">
-                           <Skeleton className="h-6 w-full" />
-                            <Skeleton className="h-10 w-full" />
-                            <Skeleton className="h-10 w-full" />
-                            <Skeleton className="h-10 w-full" />
-                       </div>
-                       <div className="flex justify-between items-center pt-4 border-t">
-                            <Skeleton className="h-10 w-24" />
-                            <Skeleton className="h-10 w-24" />
-                       </div>
-                  </CardContent>
-              </Card>
-            </div>
-             <div className="w-1/4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Question Palette</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-5 gap-2">
-                        {Array.from({length: 20}).map((_, i) => (
-                             <Skeleton key={i} className="h-10 w-10" />
-                        ))}
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
-      )
+    return () => clearInterval(timerId);
+  }, [timeLeft, isLoading, isSubmitting]);
+
+  const handleAnswerChange = (questionId: string, optionIndex: number) => {
+    setSelectedAnswers(prev => ({ ...prev, [questionId]: optionIndex }));
+  };
+
+  const handleSubmit = async () => {
+    if (!test || !user || isSubmitting) return;
+    setIsSubmitting(true);
+    
+    let score = 0;
+    for (const question of test.questions) {
+      if (selectedAnswers[question.id] === question.correctAnswerIndex) {
+        score++;
+      }
+    }
+    
+    try {
+        const resultsCollection = collection(firestore, 'results');
+        const docRef = await addDoc(resultsCollection, {
+            userId: user.uid,
+            studentName: user.displayName || 'Anonymous Student',
+            testId: test.id,
+            testTitle: test.title,
+            testType: test.testType || 'exam',
+            category: test.category,
+            examName: test.examName,
+            answers: selectedAnswers,
+            score: score,
+            totalQuestions: test.questions.length,
+            accuracy: (score / test.questions.length) * 100,
+            completedAt: serverTimestamp(),
+        });
+
+        toast({
+            title: 'Test Submitted!',
+            description: 'Your results have been saved.',
+            className: 'bg-green-100 dark:bg-green-900'
+        });
+
+        router.push(`/dashboard/results/${docRef.id}`);
+
+    } catch (error) {
+        console.error("Error submitting test results: ", error);
+        toast({
+            variant: 'destructive',
+            title: 'Submission Error',
+            description: 'Could not save your test results.'
+        });
+        setIsSubmitting(false);
+    }
+  };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
-  if (!test || !test.questions || test.questions.length === 0) {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Test Not Found</CardTitle>
-                <CardDescription>This test could not be loaded or contains no questions.</CardDescription>
-            </CardHeader>
-        </Card>
-    );
+  if (!test) {
+    return <div className="text-center py-10">Test not found or could not be loaded.</div>;
   }
-
+  
   const currentQuestion = test.questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / test.questions.length) * 100;
-
-  const handleAnswerSelect = (questionId: string, optionIndex: number) => {
-    setUserAnswers(prev => ({ ...prev, [questionId]: optionIndex }));
-  };
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
 
   return (
-    <div className="flex gap-6">
-      <div className="w-3/4">
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="text-2xl">{test.title}</CardTitle>
-              <CardDescription>{test.subject}</CardDescription>
-            </div>
-            <div className={cn("flex items-center gap-2 text-lg font-medium", timeLeft < 60 ? "text-destructive" : "")}>
-                <Clock className="h-5 w-5" />
-                <span>{formatTime(timeLeft)}</span>
-            </div>
-          </div>
-          <Progress value={progress} className="mt-4" />
-        </CardHeader>
-        <CardContent className="space-y-8">
-            <div>
-              <p className="font-semibold text-lg mb-2">{currentQuestionIndex + 1}. {currentQuestion.questionText}</p>
-              {currentQuestion?.sourceExamName && currentQuestion?.previousYear && (
-                    <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100/80 dark:bg-yellow-900/50 dark:text-yellow-200 mb-4">
-                        <Target className="mr-2 h-3 w-3" />
-                        {currentQuestion.sourceExamName} {currentQuestion.previousYear}
-                    </Badge>
-                )}
-              <RadioGroup
-                value={userAnswers[currentQuestion.id]?.toString()}
-                onValueChange={(value) => handleAnswerSelect(currentQuestion.id, parseInt(value))}
-                className="space-y-2"
-                disabled={isSubmitting}
-              >
-                {currentQuestion.options.map((option, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                    <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer p-3 rounded-md border border-input hover:bg-accent hover:text-accent-foreground transition-colors has-[[data-state=checked]]:bg-primary has-[[data-state=checked]]:text-primary-foreground">
-                      {option}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
-            </div>
-
-            <div className="flex justify-between items-center pt-4 border-t">
-                <Button 
-                    variant="outline"
-                    onClick={() => setCurrentQuestionIndex(prev => prev - 1)}
-                    disabled={currentQuestionIndex === 0 || isSubmitting}
-                >
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Previous
-                </Button>
-
-                {currentQuestionIndex < test.questions.length - 1 ? (
-                    <Button onClick={() => setCurrentQuestionIndex(prev => prev + 1)} disabled={isSubmitting}>
-                        Next <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                ) : (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="default" className="bg-green-600 hover:bg-green-700" disabled={isSubmitting}>
-                          <Check className="mr-2 h-4 w-4" /> {isSubmitting ? 'Submitting...' : 'Finish Test'}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure you want to submit?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            You won't be able to change your answers after submitting. Your test will be graded.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={finishTest} className="bg-green-600 hover:bg-green-700">Submit</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                )}
-            </div>
-        </CardContent>
-      </Card>
-      </div>
-      <div className="w-1/4">
-        <Card>
+    <div className="flex flex-col h-full">
+      <header className="flex items-center justify-between p-4 border-b bg-card">
+        <h1 className="text-xl font-bold truncate">{test.title}</h1>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 font-mono text-lg">
+          <Clock className="h-5 w-5" />
+          <span>{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}</span>
+        </div>
+      </header>
+      
+      <div className="flex-grow grid grid-cols-1 lg:grid-cols-4 gap-6 p-6">
+        {/* Left Column: Question */}
+        <div className="lg:col-span-3">
+          <Card className="h-full flex flex-col">
             <CardHeader>
-                <CardTitle>Question Palette</CardTitle>
+              <CardTitle>Question {currentQuestionIndex + 1} of {test.questions.length}</CardTitle>
+              {currentQuestion.sourceExamName && currentQuestion.previousYear && (
+                <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100/80 dark:bg-yellow-900/50 dark:text-yellow-200 mt-2 w-fit">
+                    <HelpCircle className="mr-2 h-3 w-3" />
+                    {currentQuestion.sourceExamName} {currentQuestion.previousYear}
+                </Badge>
+              )}
+            </CardHeader>
+            <CardContent className="flex-grow space-y-6">
+                <p className="text-lg leading-relaxed">{currentQuestion.questionText}</p>
+                <RadioGroup
+                    value={String(selectedAnswers[currentQuestion.id])}
+                    onValueChange={(value) => handleAnswerChange(currentQuestion.id, Number(value))}
+                    className="space-y-3"
+                >
+                    {currentQuestion.options.map((option, index) => (
+                        <div key={index} className="flex items-center space-x-3 p-4 border rounded-lg has-[:checked]:bg-blue-50 has-[:checked]:border-blue-300 dark:has-[:checked]:bg-blue-900/30 dark:has-[:checked]:border-blue-700 transition-colors">
+                            <RadioGroupItem value={String(index)} id={`q${currentQuestion.id}-o${index}`} />
+                            <Label htmlFor={`q${currentQuestion.id}-o${index}`} className="text-base flex-1 cursor-pointer">{option}</Label>
+                        </div>
+                    ))}
+                </RadioGroup>
+            </CardContent>
+            <CardFooter className="justify-between">
+                <Button variant="outline" onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))} disabled={currentQuestionIndex === 0}>Previous</Button>
+                <Button onClick={() => setCurrentQuestionIndex(prev => Math.min(test.questions.length - 1, prev + 1))} disabled={currentQuestionIndex === test.questions.length - 1}>Next</Button>
+            </CardFooter>
+          </Card>
+        </div>
+
+        {/* Right Column: Palette & Actions */}
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Question Palette</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-5 gap-2">
-                {test.questions.map((q, index) => (
-                    <Button
-                        key={q.id}
-                        variant={currentQuestionIndex === index ? "default" : userAnswers[q.id] !== undefined ? "outline" : "secondary"}
-                        className={cn(
-                            "h-10 w-10 p-0",
-                            currentQuestionIndex === index && "bg-primary text-primary-foreground",
-                            userAnswers[q.id] !== undefined && currentQuestionIndex !== index && "bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 border-green-300",
-                        )}
-                        onClick={() => setCurrentQuestionIndex(index)}
-                        disabled={isSubmitting}
-                    >
-                        {index + 1}
-                    </Button>
-                ))}
+              {test.questions.map((q, index) => (
+                <Button
+                  key={q.id}
+                  variant={currentQuestionIndex === index ? 'default' : 'outline'}
+                  size="icon"
+                  onClick={() => setCurrentQuestionIndex(index)}
+                  className={cn(
+                    selectedAnswers[q.id] !== undefined && currentQuestionIndex !== index && "bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700",
+                  )}
+                >
+                  {index + 1}
+                </Button>
+              ))}
             </CardContent>
-        </Card>
+            <CardFooter>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button className="w-full" variant="destructive" disabled={isSubmitting}>
+                            {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
+                            Submit Test
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will end the test and submit your answers. You cannot change them after submitting.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleSubmit}>Submit</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </CardFooter>
+          </Card>
+        </div>
       </div>
     </div>
   );

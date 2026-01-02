@@ -5,12 +5,12 @@ import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '@/firebase'; 
 import { Loader2, Lock, PlayCircle, ShoppingCart, ChevronDown, ChevronUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-// NOTE: We use standard HTML elements. NO Accordion/Tabs imports.
+// NOTE: We use standard HTML elements, NO Accordion/Tabs libraries to prevent crashes.
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Test } from '@/lib/types';
 
-export default function ExamSeriesPage() {
+export default function TestsPage() {
   const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchasedBundles, setPurchasedBundles] = useState<string[]>(['demo_exam']); 
@@ -22,7 +22,6 @@ export default function ExamSeriesPage() {
   const router = useRouter();
 
   useEffect(() => {
-    console.log("Exam Series Page Loaded"); // Debug check
     const fetchTests = async () => {
       try {
         const q = query(collection(db, 'tests'));
@@ -132,7 +131,7 @@ export default function ExamSeriesPage() {
                 return (
                   <div key={examName} className="border rounded-lg bg-white shadow-sm overflow-hidden transition-all duration-200">
                     
-                    {/* CARD HEADER */}
+                    {/* CARD HEADER (Standard Div) */}
                     <div 
                       onClick={() => toggleExam(examName)}
                       className="flex w-full items-center justify-between px-6 py-4 cursor-pointer hover:bg-gray-50 select-none"
@@ -219,7 +218,7 @@ export default function ExamSeriesPage() {
   );
 }
 
-// Helper Component (Safety Included)
+// Helper Component (Includes Safety Check for Missing Questions)
 function TestSection({ title, tests, isUnlocked, router }: any) {
   return (
     <div className="border rounded-md overflow-hidden bg-white">
