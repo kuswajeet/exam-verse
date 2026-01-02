@@ -7,7 +7,7 @@ export default function GenerateQuestionPage() {
        <Card>
         <CardHeader>
           <CardTitle className="text-2xl">AI Question Generator</CardTitle>
-          <CardDescription>Use AI to generate a single test question based on a topic, exam, and difficulty.</CardDescription>
+          <CardDescription>Use AI to generate a batch of test questions based on a topic, exam, and difficulty.</CardDescription>
         </CardHeader>
       </Card>
       <GenerateQuestionClientPage />

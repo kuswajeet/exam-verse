@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   Card,
   CardContent,
@@ -19,11 +19,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { generateQuestionAction, FormState } from "./actions";
+import { generateQuestionsAction, FormState } from "./actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { BrainCircuit, CheckCircle, Copy, Loader, Save, Terminal, XCircle } from "lucide-react";
+import { BrainCircuit, CheckCircle, Copy, Loader, Save, Terminal, XCircle, FileWarning } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import type { Question } from "@/lib/types";
+import { Textarea } from "@/components/ui/textarea";
+import { useFirestore } from "@/firebase";
+import { writeBatch, doc, collection } from "firebase/firestore";
 
 const initialState: FormState = {
   status: "idle",
@@ -32,122 +36,223 @@ const initialState: FormState = {
 };
 
 export function GenerateQuestionClientPage() {
-  const [state, formAction, isPending] = useActionState(generateQuestionAction, initialState);
+  const [state, formAction, isGenerating] = useActionState(generateQuestionsAction, initialState);
   const { toast } = useToast();
+  const firestore = useFirestore();
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-        title: "Copied to clipboard!",
-        description: "Question JSON copied successfully.",
-    });
-  }
+  const [editableQuestions, setEditableQuestions] = useState<Question[] | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  useState(() => {
+    if(state.status === 'success' && state.data) {
+        setEditableQuestions(state.data.questions);
+    }
+  });
+
+
+  const handleQuestionChange = (index: number, field: keyof Question, value: string | number) => {
+    if (!editableQuestions) return;
+
+    const newQuestions = [...editableQuestions];
+    (newQuestions[index] as any)[field] = value;
+    setEditableQuestions(newQuestions);
+  };
+  
+  const handleSaveToFirestore = async () => {
+    if (!editableQuestions || !firestore) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "No questions to save or database not available.",
+        });
+        return;
+    }
+
+    setIsSaving(true);
+    try {
+        const batch = writeBatch(firestore);
+        const questionsRef = collection(firestore, "questions");
+
+        editableQuestions.forEach((question) => {
+            const questionId = `gen-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            const docRef = doc(questionsRef, questionId);
+            batch.set(docRef, {
+                ...question,
+                id: questionId, // Ensure the ID is part of the document data
+                questionType: 'single_choice', // default
+            });
+        });
+
+        await batch.commit();
+
+        toast({
+            title: "Success!",
+            description: `${editableQuestions.length} questions have been saved to Firestore.`,
+            className: "bg-green-100 dark:bg-green-900"
+        });
+        setEditableQuestions(null); // Clear the form
+    } catch (error) {
+        console.error("Error saving questions to Firestore:", error);
+        toast({
+            variant: "destructive",
+            title: "Firestore Error",
+            description: error instanceof Error ? error.message : "Could not save questions.",
+        });
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid gap-6">
       <Card>
         <form action={formAction}>
           <CardHeader>
-            <CardTitle>Question Parameters</CardTitle>
+            <CardTitle>Question Generation Parameters</CardTitle>
             <CardDescription>
-              Fill in the details to generate a question.
+              Fill in the details to generate a batch of questions using AI.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="topic">Topic</Label>
-              <Input
-                id="topic"
-                name="topic"
-                placeholder="e.g., Photosynthesis"
-                required
-              />
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="topic">Topic</Label>
+                  <Input id="topic" name="topic" placeholder="e.g., Photosynthesis" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="examName">Exam Name</Label>
+                  <Input id="examName" name="examName" placeholder="e.g., SAT Biology" required />
+                </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="examName">Exam Name</Label>
-              <Input
-                id="examName"
-                name="examName"
-                placeholder="e.g., SAT Biology"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="difficulty">Difficulty</Label>
-              <Select name="difficulty" defaultValue="medium" required>
-                <SelectTrigger id="difficulty">
-                  <SelectValue placeholder="Select difficulty" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="easy">Easy</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="hard">Hard</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                    <Label htmlFor="difficulty">Difficulty</Label>
+                    <Select name="difficulty" defaultValue="medium" required>
+                        <SelectTrigger id="difficulty"><SelectValue placeholder="Select difficulty" /></SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="easy">Easy</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="hard">Hard</SelectItem>
+                        </SelectContent>
+                    </Select>
+                 </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="count">Number of Questions</Label>
+                    <Select name="count" defaultValue="5" required>
+                        <SelectTrigger id="count"><SelectValue placeholder="Select count" /></SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="1">1</SelectItem>
+                        <SelectItem value="5">5</SelectItem>
+                        <SelectItem value="10">10</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? (
+            <Button type="submit" disabled={isGenerating}>
+              {isGenerating ? (
                 <>
                     <Loader className="mr-2 h-4 w-4 animate-spin" />
                     Generating...
                 </>
-              ) : "Generate Question"}
+              ) : (
+                <>
+                    <BrainCircuit className="mr-2 h-4 w-4" />
+                    Generate Questions
+                </>
+              )}
             </Button>
           </CardFooter>
         </form>
       </Card>
-      <div className="space-y-4">
-        {state.status === 'idle' && (
-            <Card className="flex flex-col items-center justify-center h-full">
-                <CardContent className="text-center p-6">
-                    <BrainCircuit className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <p className="mt-4 text-muted-foreground">Generated question will appear here.</p>
-                </CardContent>
-            </Card>
-        )}
-        {state.status === "error" && (
+      
+      {state.status === 'idle' && (
+        <Card className="flex flex-col items-center justify-center min-h-[400px]">
+            <CardContent className="text-center p-6">
+                <BrainCircuit className="h-16 w-16 mx-auto text-muted-foreground" />
+                <p className="mt-4 text-muted-foreground">Generated questions will appear here for review.</p>
+            </CardContent>
+        </Card>
+      )}
+      
+      {state.status === "error" && (
           <Alert variant="destructive">
             <Terminal className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{state.message}</AlertDescription>
           </Alert>
-        )}
-        {state.status === "success" && state.data && (
+      )}
+
+      {editableQuestions && editableQuestions.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Generated Question</CardTitle>
-              <Badge variant="secondary" className="w-fit">Easy</Badge>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Review Generated Questions</CardTitle>
+                        <CardDescription>Edit any question details below before saving to the database.</CardDescription>
+                    </div>
+                     <Button onClick={handleSaveToFirestore} disabled={isSaving}>
+                        {isSaving ? <><Loader className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Save to Firestore</>}
+                    </Button>
+                </div>
+                 {state.message.includes('mock') && (
+                    <Alert variant="default" className="mt-4 bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/40 dark:border-amber-700 dark:text-amber-300 [&>svg]:text-amber-600">
+                        <FileWarning className="h-4 w-4" />
+                        <AlertTitle>Fallback Data</AlertTitle>
+                        <AlertDescription>{state.message}</AlertDescription>
+                    </Alert>
+                )}
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="font-semibold">{state.data.questionText}</p>
-              <div className="space-y-2">
-                {state.data.options.map((option, index) => (
-                  <div key={index} className={`flex items-center gap-2 p-2 rounded-md border ${index === state.data!.correctAnswerIndex ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : ''}`}>
-                    {index === state.data!.correctAnswerIndex ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-muted-foreground" />}
-                    <span>{option}</span>
-                  </div>
+            <CardContent className="space-y-6">
+                {editableQuestions.map((q, index) => (
+                    <div key={q.id || index} className="p-4 border rounded-lg space-y-3 bg-muted/50">
+                        <Label htmlFor={`qtext-${index}`}>Question {index+1}</Label>
+                        <Textarea id={`qtext-${index}`} value={q.questionText} onChange={(e) => handleQuestionChange(index, 'questionText', e.target.value)} rows={3} />
+                        
+                        <Label>Options</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                           {q.options.map((opt, optIndex) => (
+                               <Input key={optIndex} value={opt} onChange={(e) => {
+                                   const newOptions = [...q.options];
+                                   newOptions[optIndex] = e.target.value;
+                                   handleQuestionChange(index, 'options', newOptions as any);
+                               }}/>
+                           ))}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor={`correct-idx-${index}`}>Correct Answer Index</Label>
+                                <Input id={`correct-idx-${index}`} type="number" value={q.correctAnswerIndex} onChange={(e) => handleQuestionChange(index, 'correctAnswerIndex', parseInt(e.target.value))} />
+                            </div>
+                             <div>
+                                <Label htmlFor={`difficulty-${index}`}>Difficulty</Label>
+                                <Select value={q.difficulty} onValueChange={(value) => handleQuestionChange(index, 'difficulty', value)}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="easy">Easy</SelectItem>
+                                        <SelectItem value="medium">Medium</SelectItem>
+                                        <SelectItem value="hard">Hard</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                             </div>
+                        </div>
+                        
+                        <Label htmlFor={`explanation-${index}`}>Explanation</Label>
+                        <Textarea id={`explanation-${index}`} value={q.explanation} onChange={(e) => handleQuestionChange(index, 'explanation', e.target.value)} rows={3} />
+                    </div>
                 ))}
-              </div>
-              <div>
-                <h4 className="font-semibold mb-1">Explanation</h4>
-                <p className="text-sm text-muted-foreground p-3 bg-muted rounded-md">{state.data.explanation}</p>
-              </div>
             </CardContent>
-            <CardFooter className="justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => copyToClipboard(JSON.stringify(state.data, null, 2))}>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy JSON
-                </Button>
-                <Button size="sm">
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Question
+             <CardFooter>
+                 <Button onClick={handleSaveToFirestore} disabled={isSaving}>
+                    {isSaving ? <><Loader className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Save to Firestore</>}
                 </Button>
             </CardFooter>
           </Card>
-        )}
-      </div>
+      )}
+
     </div>
   );
 }
