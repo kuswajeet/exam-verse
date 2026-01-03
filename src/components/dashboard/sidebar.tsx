@@ -4,6 +4,8 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useFirebase } from '@/firebase/provider';
+import { signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { 
   BookOpen, 
@@ -26,13 +28,26 @@ import {
 export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { auth, user } = useFirebase();
+  const firebaseUser = auth?.currentUser ?? user;
+  const displayName =
+    firebaseUser?.displayName?.trim() ||
+    firebaseUser?.email?.split('@')[0] ||
+    'Exam Verse Member';
 
-  const handleLogout = () => {
-    if (confirm("Are you sure you want to log out?")) {
-      // Client-side logout: clear mock session and redirect
-      localStorage.removeItem("isPro");
-      router.push("/");
+  const handleLogout = async () => {
+    if (!confirm("Are you sure you want to log out?")) {
+      return;
     }
+    localStorage.removeItem("isPro");
+    if (auth) {
+      try {
+        await signOut(auth);
+      } catch (error) {
+        console.error("Failed to sign out via Firebase:", error);
+      }
+    }
+    router.push("/");
   };
 
   const menuGroups = [
@@ -76,6 +91,13 @@ export function DashboardSidebar() {
             <Package2 className="h-6 w-6 text-primary" />
             <span className="">Exam Verse</span>
           </Link>
+        </div>
+        <div className="px-4 py-3 border-b text-sm">
+          <p className="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">Signed in as</p>
+          <p className="font-semibold text-foreground truncate">{displayName}</p>
+          {firebaseUser?.email && (
+            <p className="text-xs text-muted-foreground truncate">{firebaseUser.email}</p>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto">
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4">

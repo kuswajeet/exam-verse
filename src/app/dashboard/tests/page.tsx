@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Test, TestWithQuestions } from '@/lib/types';
+import { Test } from '@/lib/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,18 +17,18 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from '@/components/ui/alert-dialog';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { getMockTests } from '@/lib/mock-data';
+} from '@/components/ui/collapsible';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/firebase';
 import Link from 'next/link';
 
-
 export default function TestsPage() {
-  const [tests, setTests] = useState<TestWithQuestions[]>([]);
+  const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
@@ -40,23 +40,23 @@ export default function TestsPage() {
 
   // 1. Fetch Data & Check Pro Status
   useEffect(() => {
-    // Check pro status from localStorage
     const proStatus = localStorage.getItem('isPro') === 'true';
     setIsPro(proStatus);
-    
+
     const fetchTests = async () => {
       setLoading(true);
       try {
-        const allTests = await getMockTests();
-        // Filter for main exams, not quizzes
-        const examTests = allTests.filter(t => t.testType === 'exam');
+        const snapshot = await getDocs(collection(db, 'tests'));
+        const allTests = snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Test) }));
+        const examTests = allTests.filter((test) => test.testType === 'exam');
         setTests(examTests);
       } catch (error) {
-        console.error("Error fetching mock tests:", error);
+        console.error('Error fetching tests:', error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchTests();
   }, []);
 
@@ -113,12 +113,12 @@ export default function TestsPage() {
       
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Exam Series</h1>
-        <p className="text-muted-foreground">Select an exam bundle to view full mock tests, subject tests, and topic practice.</p>
+        <p className="text-muted-foreground">Select an exam bundle to view full tests, subject tests, and topic practice.</p>
       </div>
 
       {tests.length === 0 ? (
         <div className="text-center p-12 border rounded-lg bg-card/50">
-          <p className="mb-4">No tests found in the database.</p>
+          <p className="mb-4">No exams available right now.</p>
         </div>
       ) : (
         <Tabs defaultValue={defaultTab} className="w-full">
