@@ -86,6 +86,7 @@ export function DataSeeder() {
         totalMarks: questionIds.length,
         isFree: true,
         price: 0,
+        examPrice: 0,
         isPublished: true,
         testType: 'exam',
         testSubType: 'full',
@@ -100,6 +101,8 @@ export function DataSeeder() {
         description: 'A valid test with 3 correctly linked questions has been generated.',
         className: 'bg-green-100 dark:bg-green-900',
       });
+      // Optionally, refresh the page to show the new data
+      window.location.reload();
     } catch (error) {
       console.error('Error repairing data:', error);
       toast({
@@ -113,7 +116,7 @@ export function DataSeeder() {
   };
 
   return (
-    <Card className="border-dashed border-amber-500 bg-amber-50/50">
+    <Card className="border-dashed border-amber-500 bg-amber-50/50 dark:bg-amber-900/20">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
           <Zap /> Developer Tool: Data Seeder

@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { collection, query, getDocs } from 'firebase/firestore';
-import { db } from '@/firebase/client';
+import { db } from '@/firebase/index';
 import { Loader2, Lock, PlayCircle, ShoppingCart, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -80,15 +80,16 @@ export default function TestsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <DataSeeder />
+      
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Exam Series</h1>
         <p className="text-gray-500">Select an exam bundle to view full mock tests, subject tests, and topic practice.</p>
       </div>
 
       {tests.length === 0 ? (
-        <div className="text-center p-12 border rounded-lg bg-gray-50">
-          <p className="mb-4">No tests found in the database. Use the developer tool above to generate a sample test.</p>
+        <div className="text-center p-12 border rounded-lg bg-gray-50/50 dark:bg-card/50">
+          <p className="mb-4">No tests found in the database. Use the developer tool below to generate a sample test.</p>
+          <DataSeeder />
         </div>
       ) : (
         <Tabs defaultValue={defaultTab} className="w-full">
@@ -171,8 +172,8 @@ function TestSection({ title, tests, isUnlocked, router }: { title: string; test
         {tests.map((test: Test) => {
             // ROBUST DATA MAPPING
             const testTitle = test.examName || test.title || "Untitled Test";
-            const duration = test.durationMinutes || (test as any).duration || 60;
-            const questionCount = test.questionIds?.length || (test as any).questions?.length || 0;
+            const duration = test.durationMinutes || 60;
+            const questionCount = test.questionIds?.length || 0;
 
             return (
               <div key={test.id} className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
@@ -199,5 +200,3 @@ function TestSection({ title, tests, isUnlocked, router }: { title: string; test
     </div>
   );
 }
-
-    
