@@ -1,173 +1,135 @@
 'use client';
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useUser, useDoc, useMemoFirebase, useFirestore } from "@/firebase/provider";
-import { doc, updateDoc } from "firebase/firestore";
-import type { User as AppUser } from "@/lib/types";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from 'react';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from '@/firebase/index'; 
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Save } from 'lucide-react';
+
+// FIXED: Removed missing 'sonner' import
 
 export default function SettingsPage() {
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
-  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   
-  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<AppUser>(userDocRef);
+  // Form State
+  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
 
-  const getInitials = (name?: string) => {
-    if (!name) return "";
-    const names = name.split(' ');
-    if (names.length > 1) {
-      return `${names[0][0]}${names[names.length - 1][0]}`;
-    }
-    return name.substring(0, 2);
-  }
-  
-  const makeAdmin = async () => {
-    if (!userDocRef) return;
+  // 1. Fetch User Data
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setUserId(user.uid);
+        setEmail(user.email || '');
+        setDisplayName(user.displayName || '');
+
+        try {
+          const userDocRef = doc(db, 'users', user.uid);
+          const userSnap = await getDoc(userDocRef);
+          if (userSnap.exists()) {
+            const data = userSnap.data();
+            setPhone(data.phone || '');
+            if (data.displayName) setDisplayName(data.displayName);
+          }
+        } catch (error) {
+          console.error("Error fetching profile:", error);
+        }
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 2. Handle Save
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId) return;
+
+    setSaving(true);
     try {
-        await updateDoc(userDocRef, { role: 'admin' });
-        toast({
-            title: "Success!",
-            description: "You are now an admin. You may need to refresh the page.",
-            className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-        });
-    } catch (error) {
-        console.error("Error updating role:", error);
-        toast({
-            title: "Error",
-            description: "Could not update your role.",
-            variant: "destructive"
-        })
-    }
-  }
+      const userRef = doc(db, 'users', userId);
+      
+      await updateDoc(userRef, {
+        displayName,
+        phone,
+        updatedAt: new Date(),
+      });
 
-  const isLoading = isUserLoading || isProfileLoading;
+      // FIXED: Use standard browser alert instead of missing toast library
+      alert("Profile updated successfully!"); 
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      alert("Failed to update profile.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div>;
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+        <p className="text-gray-500">Manage your account settings and preferences.</p>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>My Profile</CardTitle>
-          <CardDescription>Manage your account settings and profile information.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col md:flex-row items-center gap-8">
-           {isLoading ? (
-             <Skeleton className="h-24 w-24 rounded-full" />
-            ) : (
-            <Avatar className="h-24 w-24">
-                <AvatarImage src={user?.photoURL || ''} alt={userProfile?.name} />
-                <AvatarFallback className="text-3xl">
-                    {getInitials(userProfile?.name)}
-                </AvatarFallback>
-            </Avatar>
-           )}
-          <div className="flex-1 space-y-1 text-center md:text-left">
-             {isLoading ? (
-                <>
-                    <Skeleton className="h-7 w-48" />
-                    <Skeleton className="h-5 w-64 mt-1" />
-                </>
-            ) : (
-            <>
-                <h2 className="text-2xl font-bold">{userProfile?.name}</h2>
-                <p className="text-muted-foreground">{userProfile?.email}</p>
-                <Badge>{userProfile?.role}</Badge>
-            </>
-            )}
-          </div>
-          <Button variant="outline" className="mt-4 md:mt-0">Upload Picture</Button>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-            <CardTitle>Subscription</CardTitle>
-            <CardDescription>View your current plan details.</CardDescription>
+          <CardTitle>Profile Information</CardTitle>
+          <CardDescription>Update your personal details here.</CardDescription>
         </CardHeader>
         <CardContent>
-            <div className="flex justify-between items-center p-4 bg-muted rounded-lg">
-                <div>
-                    <p className="font-semibold">Current Plan</p>
-                    <p className="text-2xl font-bold">Free</p>
-                </div>
-                <Button>Upgrade to Pro</Button>
+          <form onSubmit={handleSave} className="space-y-4">
+            
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="flex items-center gap-2">
+                <Input id="email" value={email} disabled className="bg-gray-100" />
+                <span className="text-xs text-gray-500">(Cannot change)</span>
+              </div>
             </div>
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Update Profile</CardTitle>
-          <CardDescription>
-            Change your personal information.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Full Name</Label>
-            <Input id="name" defaultValue={userProfile?.name} disabled={isLoading} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" defaultValue={userProfile?.email} disabled />
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button disabled>Save Changes</Button>
-        </CardFooter>
-      </Card>
+            <div className="space-y-2">
+              <Label htmlFor="name">Display Name</Label>
+              <Input 
+                id="name" 
+                value={displayName} 
+                onChange={(e) => setDisplayName(e.target.value)} 
+                placeholder="John Doe"
+              />
+            </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Change Password</CardTitle>
-          <CardDescription>
-            Update your password for better security.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="current-password">Current Password</Label>
-            <Input id="current-password" type="password" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="new-password">New Password</Label>
-            <Input id="new-password" type="password" />
-          </div>
-           <div className="space-y-2">
-            <Label htmlFor="confirm-password">Confirm New Password</Label>
-            <Input id="confirm-password" type="password" />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input 
+                id="phone" 
+                value={phone} 
+                onChange={(e) => setPhone(e.target.value)} 
+                placeholder="+91 98765 43210" 
+              />
+            </div>
+
+            <div className="pt-4">
+              <Button type="submit" disabled={saving} className="flex gap-2">
+                {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
+                Save Changes
+              </Button>
+            </div>
+
+          </form>
         </CardContent>
-        <CardFooter>
-          <Button disabled>Change Password</Button>
-        </CardFooter>
       </Card>
-      
-      {userProfile?.role !== 'admin' && (
-        <Card>
-            <CardHeader>
-                <CardTitle>Developer Tools</CardTitle>
-                <CardDescription>Actions for testing purposes.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Button onClick={makeAdmin} variant="destructive">Developer: Make Me Admin</Button>
-            </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

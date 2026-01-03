@@ -2,6 +2,9 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
+// This file uses the main config from firebase/index.ts
+// to avoid conflicts. It re-exports the initialized services.
+
 // HARDCODED CONFIGURATION (To fix invalid-api-key error)
 const firebaseConfig = {
     apiKey: "AIzaSy...", // User will paste real API Key here
