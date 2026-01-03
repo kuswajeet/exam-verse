@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/firebase/client'; 
+import { auth } from "@/firebase/config"; 
 import { Loader2 } from 'lucide-react';
 
 export default function AuthWrapper({ children }: { children: React.ReactNode }) {
