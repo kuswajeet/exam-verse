@@ -21,7 +21,8 @@ import {
   Zap,
   Package2,
   BrainCircuit,
-  LogOut
+  LogOut,
+  Star,
 } from 'lucide-react';
 
 export function DashboardSidebar() {
@@ -108,6 +109,16 @@ export function DashboardSidebar() {
           </nav>
         </div>
          <div className="mt-auto p-4 border-t">
+             <Link
+              href="/dashboard/subscription"
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+                 pathname === "/dashboard/subscription" && "bg-muted text-primary"
+              )}
+            >
+              <Star className="h-4 w-4" />
+              Subscription
+            </Link>
             <Link
               href="/dashboard/settings"
               className={cn(

@@ -18,7 +18,8 @@ import {
   UploadCloud,
   PlusCircle,
   Settings,
-  LogOut
+  LogOut,
+  Star,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -136,6 +137,12 @@ export function DashboardHeader() {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
+           <DropdownMenuItem asChild>
+            <Link href="/dashboard/subscription">
+                <Star className="mr-2 h-4 w-4" />
+                <span>Subscription</span>
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/dashboard/settings">
                 <Settings className="mr-2 h-4 w-4" />
