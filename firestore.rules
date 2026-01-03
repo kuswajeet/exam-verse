@@ -1,120 +1,13 @@
-/**
- * Core Philosophy: This ruleset implements a Role-Based Access Control (RBAC) system combined with a user-ownership model.
- * There are two primary roles: 'student' (default) and 'admin'. Administrator privileges are granted by checking a 'role' field
- * within the user's own document in the `/users` collection.
- *
- * Data Structure:
- * - /users/{userId}: Stores private user profile data. Each document is strictly owned by the corresponding user but can also be managed by administrators.
- * - /users/{userId}/results/{resultId}: Stores test results for a specific user. This data is private and only accessible by the owner.
- * - /questions/{questionId}: A global collection of all questions. This data is managed exclusively by administrators, but is readable by any authenticated user (e.g., students taking a test).
- * - /tests/{testId}: A global collection of test configurations. Managed by admins, but readable by any authenticated user.
- *
- * Key Security Decisions:
- * - Admin Role Management: The user's role is stored on their profile document. While the UI allows self-promotion for development, in production this field should only be editable by other admins or trusted server processes.
- * - User Data Privacy: User data in `/users/{userId}` and their results in subcollections are protected. A user can only access their own documents. Administrators are granted read access for management purposes but cannot write to prevent accidental data corruption. Listing users is explicitly disabled to prevent data leakage.
- * - Content Management: All question and test content is managed by administrators, ensuring data integrity. Any authenticated user can read this data.
- * - Default Posture: The default security posture is to deny access unless explicitly granted. Any operation not covered by an `allow` rule will fail.
- */
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // --------------------------------------------------------------------------------
-    // Helper Functions
-    // --------------------------------------------------------------------------------
-
-    /**
-     * Returns true if the user is authenticated.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * Returns true if the user has an admin role.
-     * Checks for the 'role' field in the user's profile document.
-     */
-    function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-
-    /**
-     * Returns true if the currently authenticated user's UID matches the provided userId.
-     */
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-
-    /**
-     * Returns true if the document being accessed already exists in Firestore.
-     */
-    function isExistingDoc() {
-      return resource != null;
-    }
-    
-    // --------------------------------------------------------------------------------
-    // Collection Rules
-    // --------------------------------------------------------------------------------
-
-    /**
-     * @description Questions are managed by admins but readable by any signed-in user.
-     * @path /questions/{questionId}
-     */
-    match /questions/{questionId} {
-      allow get, list: if isSignedIn();
-      // Admins have full write access (create, update, delete).
-      // This simplifies batch uploads from the client.
-      allow write: if isAdmin();
-    }
-    
-    /**
-     * @description Tests are managed by admins but readable by any signed-in user.
-     * @path /tests/{testId}
-     */
-    match /tests/{testId} {
-        allow get, list: if isSignedIn();
-        allow create, update, delete: if isAdmin();
-    }
-    
-    /**
-     * @description Study materials are readable by everyone but only managed by admins.
-     * @path /materials/{materialId}
-     */
-    match /materials/{materialId} {
-      allow get, list: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    /**
-     * @description User profiles and their subcollections.
-     * @path /users/{userId}
-     */
-    match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if false; // Deny listing user profiles for privacy. This does NOT block collection group queries on subcollections.
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
-      allow delete: if isOwner(userId) || isAdmin();
-    }
-
-    /**
-     * @description Root collection for test results, enabling leaderboards.
-     * @path /results/{resultId}
-     */
-    match /results/{resultId} {
-        allow get, list: if isSignedIn();
-        allow create: if isOwner(resource.data.userId);
-        allow update, delete: if false; // Results are immutable
-    }
-
-    /**
-     * @description A private collection to grant admin roles. Not used in this ruleset, but kept for potential future server-side role management.
-     * @path /roles_admin/{userId}
-     */
-    match /roles_admin/{userId} {
-      allow read, write: if false;
+    // WARNING: These rules are completely open and are NOT secure.
+    // They should only be used for a short period during initial development.
+    // Any user can read, write, or delete any data in your database.
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
-
-    
