@@ -47,8 +47,10 @@ export default function TestsPage() {
     const fetchTests = async () => {
       setLoading(true);
       try {
-        const data = await getMockTests();
-        setTests(data);
+        const allTests = await getMockTests();
+        // Filter for main exams, not quizzes
+        const examTests = allTests.filter(t => t.testType === 'exam');
+        setTests(examTests);
       } catch (error) {
         console.error("Error fetching mock tests:", error);
       } finally {
@@ -120,7 +122,7 @@ export default function TestsPage() {
         </div>
       ) : (
         <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="mb-6 grid w-full grid-cols-2 md:w-auto md:inline-flex">
+          <TabsList className="mb-6 grid w-full grid-cols-1 sm:grid-cols-2 md:w-auto md:inline-flex">
             {categories.map(cat => (
               <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
             ))}
@@ -163,8 +165,11 @@ export default function TestsPage() {
                               <ShoppingCart size={16} /> Unlock for ₹{bundle.price}
                             </Button>
                           )}
-                          {isUnlocked && (
+                          {isUnlocked && isBundlePurchased && !isBundleFree &&(
                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">Purchased</Badge>
+                          )}
+                           {isUnlocked && isBundleFree &&(
+                             <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">Free</Badge>
                           )}
                         </div>
                     </div>
@@ -218,10 +223,14 @@ function TestSection({ title, tests, onStartTest, isPro, purchasedBundles }: { t
             return (
               <div key={test.id} className="p-3 sm:p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
                 <div>
-                  <p className="font-medium">{test.title}</p>
+                  <p className="font-medium flex items-center gap-2">
+                    {test.title}
+                    {!canAccess && <Lock size={14} className="text-amber-500" />}
+                  </p>
                   <div className="flex gap-4 text-xs text-muted-foreground mt-1">
                     <span>{test.questionCount || 0} Questions</span>
                     <span>{test.durationMinutes} mins</span>
+                     {test.isFree ? <Badge variant="outline">Free</Badge> : <Badge variant="secondary">Pro</Badge>}
                   </div>
                 </div>
                 
@@ -238,5 +247,3 @@ function TestSection({ title, tests, onStartTest, isPro, purchasedBundles }: { t
     </div>
   );
 }
-
-    

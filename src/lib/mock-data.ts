@@ -1,5 +1,6 @@
 
 import type { TestWithQuestions, Question, Material } from '@/lib/types';
+import { Timestamp } from 'firebase/firestore';
 
 const MOCK_QUESTIONS: Question[] = [
   // Science Questions (5)
@@ -215,6 +216,7 @@ export const MOCK_TESTS: TestWithQuestions[] = [
     price: 0,
     examPrice: 0,
     testSubType: 'full',
+    testType: 'exam',
     durationMinutes: 10,
     totalMarks: 5,
     questionCount: 5,
@@ -231,6 +233,7 @@ export const MOCK_TESTS: TestWithQuestions[] = [
     price: 5,
     examPrice: 20,
     testSubType: 'subject',
+    testType: 'exam',
     durationMinutes: 10,
     totalMarks: 5,
     questionCount: 5,
@@ -247,6 +250,7 @@ export const MOCK_TESTS: TestWithQuestions[] = [
     price: 5,
     examPrice: 25,
     testSubType: 'topic',
+    testType: 'quiz',
     durationMinutes: 10,
     totalMarks: 5,
     questionCount: 5,
@@ -344,5 +348,3 @@ export async function getMockOneLiners(): Promise<Question[]> {
     await delay(ARTIFICIAL_DELAY);
     return MOCK_ONE_LINERS;
 }
-
-    
