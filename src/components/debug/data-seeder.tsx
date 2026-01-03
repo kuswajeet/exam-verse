@@ -54,34 +54,36 @@ export function DataSeeder() {
   const [isSeeding, setIsSeeding] = useState(false);
 
   const repairDatabase = async () => {
-    if (!db) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Firestore not available.' });
-      return;
-    }
     setIsSeeding(true);
+    console.log("Step 1: Connecting...");
 
     try {
+      if (!db) {
+        throw new Error("Database connection is missing/undefined");
+      }
+      
       const batch = writeBatch(db);
       const questionsCollection = collection(db, 'questions');
       const testsCollection = collection(db, 'tests');
 
-      // 1. Create 3 new Question documents and capture their real IDs
+      console.log("Step 2: Creating Questions...");
       const questionIds: string[] = [];
       sampleQuestions.forEach((qData) => {
-        const questionRef = doc(questionsCollection); // Create a new doc reference with a random ID
-        batch.set(questionRef, { ...qData, id: questionRef.id }); // Add the ID to the doc data itself
-        questionIds.push(questionRef.id); // Capture the real ID
+        const questionRef = doc(questionsCollection);
+        batch.set(questionRef, { ...qData, id: questionRef.id });
+        questionIds.push(questionRef.id);
       });
+      console.log(`Captured IDs: ${questionIds.join(', ')}`);
 
-      // 2. Create the new Test document using the captured IDs
-      const testRef = doc(testsCollection); // Create a new test doc reference
+      console.log("Step 3: Creating Test document...");
+      const testRef = doc(testsCollection);
       const testData: Omit<Test, 'id'> = {
         title: 'General Science Repair Test',
-        examName: 'General Science Repair Test', // Set examName
-        durationMinutes: 45, // Set duration
+        examName: 'General Science Repair Test',
+        durationMinutes: 30,
         category: 'Science',
         subject: 'Mixed',
-        questionIds: questionIds, // Use the real, captured IDs
+        questionIds: questionIds,
         questionCount: questionIds.length,
         totalMarks: questionIds.length,
         isFree: true,
@@ -93,16 +95,12 @@ export function DataSeeder() {
       };
       batch.set(testRef, testData);
 
-      // 3. Commit all writes at once
+      console.log("Step 4: Committing batch write...");
       await batch.commit();
 
-      toast({
-        title: 'Database Repaired!',
-        description: 'A valid test with 3 correctly linked questions has been generated.',
-        className: 'bg-green-100 dark:bg-green-900',
-      });
-      // Optionally, refresh the page to show the new data
+      alert("Database repaired! Refreshing page...");
       window.location.reload();
+
     } catch (error) {
       console.error('Error repairing data:', error);
       toast({
@@ -111,6 +109,7 @@ export function DataSeeder() {
         description: error instanceof Error ? error.message : 'An unknown error occurred.',
       });
     } finally {
+      console.log("Step 5: Finalizing process...");
       setIsSeeding(false);
     }
   };
