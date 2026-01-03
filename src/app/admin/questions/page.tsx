@@ -18,36 +18,7 @@ import type { Question } from '@/lib/types';
 
 
 // --- MOCK DATA ---
-const sampleOneLiners: Question[] = [
-  {
-    id: 'sample-ol-1',
-    questionText: 'What is the powerhouse of the cell?',
-    options: ['Mitochondria'],
-    correctAnswerIndex: 0,
-    explanation: "Mitochondria generate most of the chemical energy needed to power the cell's biochemical reactions.",
-    category: 'Medical',
-    examName: 'NEET',
-    subject: 'Biology',
-    topic: 'Cell Biology',
-    difficulty: 'easy',
-    questionType: 'one_liner',
-  },
-  {
-    id: 'sample-ol-2',
-    questionText: 'What force keeps planets in orbit around the sun?',
-    options: ['Gravity'],
-    correctAnswerIndex: 0,
-    explanation: 'Gravity is the fundamental force of attraction that governs the motion of planets and stars.',
-    category: 'Engineering',
-    examName: 'JEE Main',
-    subject: 'Physics',
-    topic: 'Gravitation',
-    difficulty: 'easy',
-    questionType: 'one_liner',
-  },
-];
-
-const sampleMultipleChoice: Question[] = [
+const MOCK_QUESTIONS_LIST: Question[] = [
   {
     id: 'sample-mcq-1',
     questionText: 'Which planet is closest to the Sun?',
@@ -74,6 +45,110 @@ const sampleMultipleChoice: Question[] = [
     difficulty: 'medium',
     questionType: 'single_choice',
   },
+    {
+    id: 'sample-ol-1',
+    questionText: 'What is the powerhouse of the cell?',
+    options: ['Mitochondria'],
+    correctAnswerIndex: 0,
+    explanation: "Mitochondria generate most of the chemical energy needed to power the cell's biochemical reactions.",
+    category: 'Medical',
+    examName: 'NEET',
+    subject: 'Biology',
+    topic: 'Cell Biology',
+    difficulty: 'easy',
+    questionType: 'one_liner',
+  },
+  {
+    id: 'sample-ol-2',
+    questionText: 'What force keeps planets in orbit around the sun?',
+    options: ['Gravity'],
+    correctAnswerIndex: 0,
+    explanation: 'Gravity is the fundamental force of attraction that governs the motion of planets and stars.',
+    category: 'Engineering',
+    examName: 'JEE Main',
+    subject: 'Physics',
+    topic: 'Gravitation',
+    difficulty: 'easy',
+    questionType: 'one_liner',
+  },
+  {
+    id: 'sample-mcq-3',
+    questionText: 'What is the value of x in 2x + 3 = 11?',
+    options: ['2', '3', '4', '5'],
+    correctAnswerIndex: 2,
+    explanation: '2x = 8, so x = 4.',
+    category: 'Engineering',
+    examName: 'JEE Main',
+    subject: 'Math',
+    topic: 'Algebra',
+    difficulty: 'easy',
+    questionType: 'single_choice',
+  },
+  {
+    id: 'sample-mcq-4',
+    questionText: 'Who wrote "1984"?',
+    options: ['Aldous Huxley', 'George Orwell', 'Ray Bradbury', 'Philip K. Dick'],
+    correctAnswerIndex: 1,
+    explanation: 'George Orwell\'s dystopian novel "1984" was published in 1949.',
+    category: 'General',
+    examName: 'SAT',
+    subject: 'Literature',
+    topic: '20th Century Lit',
+    difficulty: 'medium',
+    questionType: 'single_choice',
+  },
+  {
+    id: 'sample-ol-3',
+    questionText: 'What is the chemical symbol for gold?',
+    options: ['Au'],
+    correctAnswerIndex: 0,
+    explanation: 'The chemical symbol for gold is Au, from the Latin word "aurum".',
+    category: 'Science',
+    examName: 'General',
+    subject: 'Chemistry',
+    topic: 'Elements',
+    difficulty: 'easy',
+    questionType: 'one_liner',
+  },
+  {
+    id: 'sample-mcq-5',
+    questionText: 'Which country is known as the Land of the Rising Sun?',
+    options: ['China', 'South Korea', 'Japan', 'Thailand'],
+    correctAnswerIndex: 2,
+    explanation: 'Japan is often called the "Land of the Rising Sun" because its name in Japanese can be translated this way.',
+    category: 'General',
+    examName: 'General',
+    subject: 'Geography',
+    topic: 'World Geography',
+    difficulty: 'easy',
+    questionType: 'single_choice',
+  },
+  {
+    id: 'sample-mcq-6',
+    questionText: 'How many bones are in the adult human body?',
+    options: ['206', '208', '210', '212'],
+    correctAnswerIndex: 0,
+    explanation: 'The adult human skeleton is composed of 206 bones.',
+    category: 'Medical',
+    examName: 'NEET',
+    subject: 'Biology',
+    topic: 'Anatomy',
+    difficulty: 'medium',
+    questionType: 'single_choice',
+  },
+  {
+    id: 'sample-ol-4',
+    questionText: 'What is the hardest natural substance on Earth?',
+    options: ['Diamond'],
+    correctAnswerIndex: 0,
+    explanation: 'Diamond is the hardest known natural material, rating 10 on the Mohs scale.',
+    category: 'Science',
+    examName: 'General',
+    subject: 'Geology',
+    topic: 'Minerals',
+    difficulty: 'hard',
+    questionType: 'one_liner',
+  },
 ];
 // --- END MOCK DATA ---
 
@@ -81,28 +156,20 @@ export default function ManageQuestionsPage() {
   const { toast } = useToast();
   
   // State
-  const [allQuestions, setAllQuestions] = useState<Question[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [allQuestions, setAllQuestions] = useState<Question[]>(MOCK_QUESTIONS_LIST);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({ topic: 'all', difficulty: 'all', type: 'all' });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Data fetching simulation
-  useEffect(() => {
-    setIsLoading(true);
-    // Start with an empty list and let the user seed it.
-    setAllQuestions([]); 
-    setIsLoading(false);
-  }, []);
-
   // Memoized lists for filters and display
   const { topics, difficulties, types } = useMemo(() => {
     const topicSet = new Set<string>();
     const difficultySet = new Set<string>();
     const typeSet = new Set<string>();
-    allQuestions.forEach(q => {
+    MOCK_QUESTIONS_LIST.forEach(q => {
       if(q.topic) topicSet.add(q.topic);
       if(q.difficulty) difficultySet.add(q.difficulty);
       if(q.questionType) typeSet.add(q.questionType);
@@ -112,7 +179,7 @@ export default function ManageQuestionsPage() {
       difficulties: ['all', ...Array.from(difficultySet)],
       types: ['all', ...Array.from(typeSet)]
     };
-  }, [allQuestions]);
+  }, []);
 
   const filteredQuestions = useMemo(() => {
     return allQuestions.filter(q => 
@@ -151,15 +218,15 @@ export default function ManageQuestionsPage() {
     setSelectedIds(newSelectedIds);
   };
   
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
     setAllQuestions(prev => prev.filter(q => !selectedIds.has(q.id)));
-    toast({ title: "Success", description: `${selectedIds.size} questions deleted.` });
+    toast({ title: "Success", description: `${selectedIds.size} questions deleted. (Mock)` });
     setSelectedIds(new Set());
   };
 
-  const handleDeleteRow = async (id: string) => {
+  const handleDeleteRow = (id: string) => {
     setAllQuestions(prev => prev.filter(q => q.id !== id));
-    toast({ title: "Success", description: `Question deleted.` });
+    toast({ title: "Success", description: `Question deleted. (Mock)` });
   };
 
   const handleEditClick = (question: Question) => {
@@ -167,24 +234,21 @@ export default function ManageQuestionsPage() {
     setIsModalOpen(true);
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = () => {
     if (!editingQuestion) return;
-    setAllQuestions(prev => prev.map(q => q.id === editingQuestion.id ? editingQuestion : q));
-    toast({ title: 'Success', description: 'Question updated successfully.' });
+    alert("Edit feature coming soon!");
+    // This is where you would update the local state:
+    // setAllQuestions(prev => prev.map(q => q.id === editingQuestion.id ? editingQuestion : q));
+    // toast({ title: 'Success', description: 'Question updated successfully. (Mock)' });
     setIsModalOpen(false);
     setEditingQuestion(null);
   };
 
-  const handleSeedData = async () => {
-    const allSamples = [...sampleOneLiners, ...sampleMultipleChoice];
-    setAllQuestions(prev => {
-        const existingIds = new Set(prev.map(q => q.id));
-        const newQuestions = allSamples.filter(s => !existingIds.has(s.id));
-        return [...prev, ...newQuestions];
-    });
+  const handleSeedData = () => {
+    setAllQuestions(MOCK_QUESTIONS_LIST);
     toast({
         title: 'Success!',
-        description: `${allSamples.length} sample questions have been added.`,
+        description: `${MOCK_QUESTIONS_LIST.length} sample questions have been loaded.`,
         className: 'bg-green-100 dark:bg-green-900',
     });
   };
@@ -205,7 +269,7 @@ export default function ManageQuestionsPage() {
                 )}
                  <Button onClick={handleSeedData}>
                   <Zap className="mr-2 h-4 w-4" />
-                  Add Sample Data
+                  Load Mock Data
                 </Button>
             </div>
         </div>
@@ -238,7 +302,7 @@ export default function ManageQuestionsPage() {
             {isLoading ? (
               <TableRow><TableCell colSpan={6} className="text-center h-24">Loading questions...</TableCell></TableRow>
             ) : filteredQuestions.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center h-24">No questions found. Try adding sample data.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center h-24">No questions found. Try loading mock data.</TableCell></TableRow>
             ) : (
               filteredQuestions.map(question => (
                 <TableRow key={question.id} data-state={selectedIds.has(question.id) ? 'selected' : ''}>
@@ -248,7 +312,7 @@ export default function ManageQuestionsPage() {
                   <TableCell>{question.topic}</TableCell>
                   <TableCell><Badge variant={question.difficulty === 'hard' ? 'destructive' : 'secondary'}>{question.difficulty}</Badge></TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(question)}><Pencil className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => alert('Edit feature coming soon!')}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => handleDeleteRow(question.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                   </TableCell>
                 </TableRow>
