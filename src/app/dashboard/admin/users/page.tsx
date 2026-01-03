@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -67,7 +67,6 @@ const INITIAL_MOCK_USERS: MockUser[] = [
 export default function ManageUsersPage() {
   const [users, setUsers] = useState<MockUser[]>(INITIAL_MOCK_USERS);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<MockUser | null>(null);
 
   const { toast } = useToast();
@@ -95,14 +94,12 @@ export default function ManageUsersPage() {
 
   const handleOpenEditDialog = (user: MockUser) => {
     setEditingUser({ ...user });
-    setIsEditDialogOpen(true);
   }
 
   const handleSaveEdit = () => {
     if (!editingUser) return;
     setUsers(users.map(u => u.uid === editingUser.uid ? editingUser : u));
     alert("User details updated!");
-    setIsEditDialogOpen(false);
     setEditingUser(null);
   };
   
@@ -228,12 +225,7 @@ export default function ManageUsersPage() {
       </CardContent>
     </Card>
 
-    <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
-        setIsEditDialogOpen(open);
-        if (!open) {
-            setEditingUser(null);
-        }
-    }}>
+    <Dialog open={!!editingUser} onOpenChange={(isOpen) => { if (!isOpen) setEditingUser(null); }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit User Details</DialogTitle>
@@ -261,5 +253,3 @@ export default function ManageUsersPage() {
     </>
   );
 }
-
-    
