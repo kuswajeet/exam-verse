@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -9,11 +10,12 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { PlusCircle, Trash2, Loader } from 'lucide-react';
+import { PlusCircle, Trash2, Loader, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Question, Test } from '@/lib/types';
+import { Switch } from '@/components/ui/switch';
 
 const questionSchema = z.object({
   questionText: z.string().min(5, 'Question text is too short'),
@@ -35,6 +37,7 @@ const testSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   examName: z.string().min(1, 'Exam name is required'),
   subject: z.string().min(1, 'Subject is required'),
+  isPremium: z.boolean().default(false),
   questions: z.array(questionSchema).min(1, 'At least one question is required'),
 });
 
@@ -47,6 +50,7 @@ export function CreateTestManualClientPage() {
       category: '',
       examName: '',
       subject: '',
+      isPremium: false,
       questions: [],
     },
   });
@@ -59,6 +63,8 @@ export function CreateTestManualClientPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const isPremium = form.watch('isPremium');
 
   async function onSubmit(values: z.infer<typeof testSchema>) {
     setIsSubmitting(true);
@@ -66,11 +72,11 @@ export function CreateTestManualClientPage() {
     // Simulate network delay
     setTimeout(() => {
       console.log("Mock Test Data:", values);
-      alert("Test Created Successfully! (Mock)");
+      alert(`Test Created (Mock): ${values.title} (Premium: ${values.isPremium ? 'Yes' : 'No'})`);
       
       toast({ 
         title: 'Success! (Mock)', 
-        description: 'Test has been created locally.',
+        description: `Test '${values.title}' has been created locally. Premium: ${values.isPremium ? 'Yes' : 'No'}`,
         className: 'bg-green-100 dark:bg-green-900'
       });
       
@@ -98,7 +104,12 @@ export function CreateTestManualClientPage() {
           <CardHeader><CardTitle>Test Details</CardTitle></CardHeader>
           <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FormField control={form.control} name="title" render={({ field }) => (
-              <FormItem><FormLabel>Test Title</FormLabel><FormControl><Input placeholder="e.g., Physics Mock Test 1" {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem className="lg:col-span-2">
+                <FormLabel className="flex items-center gap-2">
+                  Test Title
+                  {isPremium && <Lock className="h-4 w-4 text-amber-500" />}
+                </FormLabel>
+                <FormControl><Input placeholder="e.g., Physics Mock Test 1" {...field} /></FormControl><FormMessage /></FormItem>
             )}/>
             <FormField control={form.control} name="durationMinutes" render={({ field }) => (
               <FormItem><FormLabel>Duration (minutes)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
@@ -112,6 +123,26 @@ export function CreateTestManualClientPage() {
             <FormField control={form.control} name="subject" render={({ field }) => (
               <FormItem><FormLabel>Subject</FormLabel><FormControl><Input placeholder="e.g., Physics" {...field} /></FormControl><FormMessage /></FormItem>
             )}/>
+            <FormField
+              control={form.control}
+              name="isPremium"
+              render={({ field }) => (
+                <FormItem className="flex flex-col rounded-lg border p-4 justify-center">
+                    <div className="flex flex-row items-center justify-between">
+                         <FormLabel className="text-base">Premium Content?</FormLabel>
+                        <FormControl>
+                            <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            />
+                        </FormControl>
+                    </div>
+                    <FormDescription>
+                        Premium tests require a "Pro" subscription to access.
+                    </FormDescription>
+                </FormItem>
+              )}
+            />
           </CardContent>
         </Card>
 
@@ -200,3 +231,5 @@ export function CreateTestManualClientPage() {
     </Form>
   );
 }
+
+    
