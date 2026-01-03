@@ -1,12 +1,21 @@
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 
+// 1. TELL NEXT.JS TO NEVER BUILD THIS STATICALLY
+export const dynamic = 'force-dynamic';
+
 export async function POST() {
   try {
-    // FIX: Initialize Razorpay INSIDE the function, not at the top
+    // 2. SAFETY CHECK: Do not run if keys are missing (Prevents Build Crash)
+    if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      console.warn("Razorpay keys missing - Skipping payment init");
+      return NextResponse.json({ error: "Payment system unavailable" }, { status: 500 });
+    }
+
+    // 3. Initialize Razorpay only when requested
     const razorpay = new Razorpay({
-      key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-      key_secret: process.env.RAZORPAY_KEY_SECRET!,
+      key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
 
     const order = await razorpay.orders.create({
