@@ -1,7 +1,6 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -17,153 +16,133 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from '@/components/ui/skeleton';
-import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider";
-import { useCollection } from "@/firebase/firestore/use-collection";
-import { collection, query, orderBy, limit } from "firebase/firestore";
-import type { TestAttempt } from "@/lib/types";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Trophy, Award } from "lucide-react";
 
-const categories = ["engineering", "medical", "general", "physics", "chemistry", "maths", "biology"];
+// Hardcoded mock data for instant loading
+const LEADERBOARD_DATA = [
+  { rank: 1, name: 'Satoshi N.', points: 9850, testsTaken: 15, accuracy: 95, avatar: '/avatars/01.png' },
+  { rank: 2, name: 'Vitalik B.', points: 9700, testsTaken: 18, accuracy: 92, avatar: '/avatars/02.png' },
+  { rank: 3, name: 'Ada L.', points: 9650, testsTaken: 14, accuracy: 94, avatar: '/avatars/03.png' },
+  { rank: 4, name: 'Grace H.', points: 9500, testsTaken: 20, accuracy: 88, avatar: '/avatars/04.png' },
+  { rank: 5, name: 'Alan T.', points: 9450, testsTaken: 16, accuracy: 91, avatar: '/avatars/05.png' },
+  { rank: 6, name: 'Margaret H.', points: 9300, testsTaken: 19, accuracy: 89, avatar: '/avatars/06.png' },
+  { rank: 7, name: 'Linus T.', points: 9250, testsTaken: 22, accuracy: 85, avatar: '/avatars/07.png' },
+  { rank: 8, name: 'John C.', points: 9100, testsTaken: 12, accuracy: 93, avatar: '/avatars/08.png' },
+  { rank: 9, name: 'Tim B.', points: 9050, testsTaken: 25, accuracy: 84, avatar: '/avatars/09.png' },
+  { rank: 10, name: 'Hedy L.', points: 9000, testsTaken: 17, accuracy: 88, avatar: '/avatars/10.png' },
+];
+
+const YOUR_RANK = { rank: 12, name: 'You', points: 8800, testsTaken: 11, accuracy: 82, avatar: '/avatars/user.png' };
+
+const top3 = LEADERBOARD_DATA.slice(0, 3);
+const runnersUp = LEADERBOARD_DATA.slice(3);
 
 export default function LeaderboardPage() {
-  const { user } = useUser();
-  const firestore = useFirestore();
 
-  const [filterType, setFilterType] = useState('all'); // 'all', 'exam', 'quiz'
-  const [filterCategory, setFilterCategory] = useState('all');
-
-  // 1. Fetch a broader set of top results from Firestore.
-  const leaderboardQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    // Fetch top 20 scores overall to allow for client-side filtering.
-    return query(collection(firestore, 'results'), orderBy('score', 'desc'), limit(20));
-  }, [firestore]);
-  
-  const { data: allTopAttempts, isLoading } = useCollection<TestAttempt>(leaderboardQuery);
-
-  // 2. Apply client-side filtering based on state.
-  const filteredAndSortedAttempts = useMemo(() => {
-    if (!allTopAttempts) return [];
-
-    const filtered = allTopAttempts.filter(attempt => {
-        const typeMatch = filterType === 'all' || attempt.testType === filterType;
-        const categoryMatch = filterCategory === 'all' || attempt.category === filterCategory;
-        return typeMatch && categoryMatch;
-    });
-
-    // The data is already sorted by score from Firestore, so we just need to take the top 10.
-    return filtered.slice(0, 10);
-
-  }, [allTopAttempts, filterType, filterCategory]);
-
-
-  const getMedal = (rank: number) => {
-    if (rank === 1) return '🥇';
-    if (rank === 2) return '🥈';
-    if (rank === 3) return '🥉';
-    return rank;
-  };
-  
-  const getRowClass = (rank: number, isCurrentUser: boolean) => {
-    if (isCurrentUser) return "bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200/70 dark:hover:bg-blue-900/60";
-    if (rank === 1) return "bg-amber-100 dark:bg-amber-900/40";
-    if (rank === 2) return "bg-slate-100 dark:bg-slate-700/30";
-    if (rank === 3) return "bg-orange-100 dark:bg-orange-900/40";
-    return "";
+  const getPodiumCardClass = (rank: number) => {
+    switch (rank) {
+      case 1: return "border-yellow-400 bg-yellow-50 dark:bg-yellow-900/30";
+      case 2: return "border-slate-400 bg-slate-50 dark:bg-slate-800/30";
+      case 3: return "border-orange-400 bg-orange-50 dark:bg-orange-900/30";
+      default: return "";
+    }
+  }
+   const getMedalIcon = (rank: number) => {
+    switch (rank) {
+      case 1: return <Trophy className="h-8 w-8 text-yellow-500" />;
+      case 2: return <Award className="h-8 w-8 text-slate-500" />;
+      case 3: return <Award className="h-8 w-8 text-orange-500" />;
+      default: return null;
+    }
   }
 
-  const resetFilters = () => {
-    setFilterType('all');
-    setFilterCategory('all');
-  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 pb-24">
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-2xl">
                     <span role="img" aria-label="Trophy">🏆</span> Hall of Fame
                 </CardTitle>
                 <CardDescription>
-                See how you stack up against the competition. This is the top 10 leaderboard based on your filters.
+                Top performers across all exams.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col md:flex-row gap-4">
-                <Select value={filterType} onValueChange={setFilterType}>
-                    <SelectTrigger className="w-full md:w-[180px]">
-                        <SelectValue placeholder="Filter by Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="exam">Exams</SelectItem>
-                        <SelectItem value="quiz">Quizzes</SelectItem>
-                    </SelectContent>
-                </Select>
-                 <Select value={filterCategory} onValueChange={setFilterCategory}>
-                    <SelectTrigger className="w-full md:w-[180px]">
-                        <SelectValue placeholder="Filter by Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        {categories.map(cat => <SelectItem key={cat} value={cat} className="capitalize">{cat}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                <Button variant="outline" onClick={resetFilters}>Reset</Button>
-            </CardContent>
         </Card>
-        
+      
+        {/* Top 3 Podium */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            {top3.map((player) => (
+            <Card key={player.rank} className={`flex flex-col items-center p-6 ${getPodiumCardClass(player.rank)}`}>
+                {getMedalIcon(player.rank)}
+                <Avatar className="w-20 h-20 mt-4 border-2 border-white">
+                <AvatarImage src={`https://i.pravatar.cc/150?u=${player.name}`} alt={player.name} />
+                <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <h3 className="mt-4 text-xl font-bold">{player.name}</h3>
+                <p className="text-muted-foreground font-semibold">{player.points.toLocaleString()} XP</p>
+                <p className="text-xs text-muted-foreground mt-2">{player.testsTaken} tests taken</p>
+            </Card>
+            ))}
+        </div>
+
+        {/* Ranks 4-10 Table */}
         <Card>
-            <CardContent className="pt-6">
+            <CardHeader>
+                <CardTitle>Leaderboard</CardTitle>
+                <CardDescription>The best of the best.</CardDescription>
+            </CardHeader>
+            <CardContent>
                 <Table>
                 <TableHeader>
                     <TableRow>
-                    <TableHead className="w-[50px]">Rank</TableHead>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Test</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Score</TableHead>
+                    <TableHead className="w-[80px]">Rank</TableHead>
+                    <TableHead>Player</TableHead>
+                    <TableHead className="text-right">XP</TableHead>
+                    <TableHead className="text-right">Tests Taken</TableHead>
+                    <TableHead className="text-right">Avg. Accuracy</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {isLoading ? (
-                        Array.from({ length: 10 }).map((_, i) => (
-                            <TableRow key={i}>
-                            <TableCell><Skeleton className="h-5 w-8" /></TableCell>
-                            <TableCell><Skeleton className="h-5 w-40" /></TableCell>
-                            <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                            <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                            <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                            <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
-                            </TableRow>
-                    ))) : filteredAndSortedAttempts && filteredAndSortedAttempts.length > 0 ? (
-                    filteredAndSortedAttempts.map((attempt, index) => {
-                        const rank = index + 1;
-                        const isCurrentUser = user?.uid === attempt.userId;
-
-                        return (
-                            <TableRow key={attempt.id} className={getRowClass(rank, isCurrentUser)}>
-                                <TableCell className="font-bold text-lg">{getMedal(rank)}</TableCell>
-                                <TableCell className="font-medium">{attempt.studentName || 'Anonymous Student'}</TableCell>
-                                <TableCell>{attempt.testTitle}</TableCell>
-                                <TableCell className="capitalize">{attempt.category}</TableCell>
-                                <TableCell className="capitalize">{attempt.testType}</TableCell>
-                                <TableCell className="text-right font-semibold">{attempt.score}/{attempt.totalQuestions}</TableCell>
-                            </TableRow>
-                        )
-                    })
-                    ) : (
-                        <TableRow>
-                            <TableCell colSpan={6} className="text-center h-24">
-                                No champions found in this category yet. Be the first!
-                            </TableCell>
-                        </TableRow>
-                    )}
+                    {runnersUp.map((player) => (
+                    <TableRow key={player.rank}>
+                        <TableCell className="font-bold text-lg">{player.rank}</TableCell>
+                        <TableCell>
+                        <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9">
+                            <AvatarImage src={`https://i.pravatar.cc/150?u=${player.name}`} alt={player.name} />
+                            <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{player.name}</span>
+                        </div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono">{player.points.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{player.testsTaken}</TableCell>
+                        <TableCell className="text-right">{player.accuracy}%</TableCell>
+                    </TableRow>
+                    ))}
                 </TableBody>
                 </Table>
+            </CardContent>
+        </Card>
+      
+        {/* Fixed "Your Rank" Card */}
+        <Card className="fixed bottom-4 right-4 w-80 shadow-lg border-primary z-50">
+            <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                     <div className="flex-shrink-0 text-lg font-bold h-10 w-10 flex items-center justify-center bg-muted rounded-full">
+                        {YOUR_RANK.rank}
+                    </div>
+                    <div>
+                        <p className="font-bold">Your Rank</p>
+                        <p className="text-sm text-muted-foreground">{YOUR_RANK.points.toLocaleString()} XP</p>
+                    </div>
+                </div>
+                <Avatar>
+                    <AvatarImage src={`https://i.pravatar.cc/150?u=${YOUR_RANK.name}`} alt={YOUR_RANK.name} />
+                    <AvatarFallback>Y</AvatarFallback>
+                </Avatar>
             </CardContent>
         </Card>
     </div>
