@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -10,9 +11,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, addDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import type { Material } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader, Trash2, PlusCircle, Book, FileText } from 'lucide-react';
@@ -29,7 +27,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { Timestamp } from 'firebase/firestore';
+
+
+const MOCK_ADMIN_MATERIALS: Material[] = [
+    { id: 'mock-mat-1', title: 'Physics Formula Sheet', type: 'PDF', subject: 'Physics', content: 'https://example.com/physics.pdf', createdAt: { seconds: new Date('2024-05-20').getTime() / 1000, nanoseconds: 0 } as Timestamp },
+    { id: 'mock-mat-2', title: 'Organic Chemistry Reactions', type: 'PDF', subject: 'Chemistry', content: 'https://example.com/chem.pdf', createdAt: { seconds: new Date('2024-05-18').getTime() / 1000, nanoseconds: 0 } as Timestamp },
+    { id: 'mock-mat-3', title: 'Cell Biology Basics', type: 'Note', subject: 'Biology', content: 'The cell is the basic structural, functional, and biological unit of all known organisms...', createdAt: { seconds: new Date('2024-05-15').getTime() / 1000, nanoseconds: 0 } as Timestamp },
+    { id: 'mock-mat-4', title: 'Key Historical Dates', type: 'Note', subject: 'History', content: '1066: Battle of Hastings\n1492: Columbus reaches the Americas\n1776: US Declaration of Independence', createdAt: { seconds: new Date('2024-05-12').getTime() / 1000, nanoseconds: 0 } as Timestamp },
+    { id: 'mock-mat-5', title: 'Calculus Cheat Sheet', type: 'PDF', subject: 'Math', content: 'https://example.com/calculus.pdf', createdAt: { seconds: new Date('2024-05-10').getTime() / 1000, nanoseconds: 0 } as Timestamp },
+];
+
 
 const materialSchema = z.object({
   title: z.string().min(3, 'Title is too short'),
@@ -41,15 +50,9 @@ const materialSchema = z.object({
 type MaterialForm = z.infer<typeof materialSchema>;
 
 export default function ManageMaterialsPage() {
-  const firestore = useFirestore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const materialsQuery = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'materials'), orderBy('createdAt', 'desc')) : null, 
-    [firestore]
-  );
-  const { data: materials, isLoading, error } = useCollection<Material>(materialsQuery);
+  const [materials, setMaterials] = useState<Material[]>(MOCK_ADMIN_MATERIALS);
 
   const form = useForm<MaterialForm>({
     resolver: zodResolver(materialSchema),
@@ -64,47 +67,38 @@ export default function ManageMaterialsPage() {
   const materialType = form.watch('type');
 
   async function onSubmit(values: MaterialForm) {
-    if (!firestore) return;
     setIsSubmitting(true);
-    try {
-      await addDoc(collection(firestore, 'materials'), {
-        ...values,
-        createdAt: serverTimestamp(),
-      });
-      toast({
-        title: 'Success!',
-        description: 'New study material has been added.',
-        className: 'bg-green-100 dark:bg-green-900',
-      });
-      form.reset();
-    } catch (e) {
-      console.error(e);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to add study material.',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    
+    // Simulate network delay
+    setTimeout(() => {
+        const newMaterial: Material = {
+            id: `mock-${Date.now()}`,
+            ...values,
+            createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 } as Timestamp,
+        };
+
+        setMaterials(prev => [newMaterial, ...prev]);
+
+        alert("Material Added (Mock)");
+        
+        toast({
+            title: 'Success! (Mock)',
+            description: 'New study material has been added to the local list.',
+            className: 'bg-green-100 dark:bg-green-900',
+        });
+        
+        form.reset();
+        setIsSubmitting(false);
+    }, 500);
   }
   
   async function handleDelete(id: string) {
-    if(!firestore) return;
-    try {
-        await deleteDoc(doc(firestore, 'materials', id));
-        toast({
-            title: 'Material Deleted',
-            description: 'The study material has been removed.'
-        })
-    } catch (e) {
-        console.error(e);
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Failed to delete material.'
-        })
-    }
+    alert("Material Deleted (Mock)");
+    setMaterials(prev => prev.filter(m => m.id !== id));
+    toast({
+        title: 'Material Deleted (Mock)',
+        description: 'The study material has been removed from the local list.'
+    });
   }
 
   return (
@@ -178,11 +172,7 @@ export default function ManageMaterialsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {isLoading ? (
-                            <TableRow><TableCell colSpan={5} className="text-center h-24">Loading materials...</TableCell></TableRow>
-                        ) : error ? (
-                            <TableRow><TableCell colSpan={5} className="text-center text-red-500 h-24">Error loading materials.</TableCell></TableRow>
-                        ) : materials?.length === 0 ? (
+                        {materials?.length === 0 ? (
                              <TableRow><TableCell colSpan={5} className="text-center h-24">No materials found.</TableCell></TableRow>
                         ) : (
                             materials?.map(material => (
@@ -193,7 +183,7 @@ export default function ManageMaterialsPage() {
                                     </TableCell>
                                     <TableCell><Badge variant={material.type === 'PDF' ? 'destructive' : 'secondary'}>{material.type}</Badge></TableCell>
                                     <TableCell>{material.subject}</TableCell>
-                                    <TableCell>{material.createdAt ? format(material.createdAt.toDate(), 'PP') : 'N/A'}</TableCell>
+                                    <TableCell>{material.createdAt ? format(material.createdAt.seconds * 1000, 'PP') : 'N/A'}</TableCell>
                                     <TableCell className="text-right">
                                        <AlertDialog>
                                           <AlertDialogTrigger asChild>
@@ -203,7 +193,7 @@ export default function ManageMaterialsPage() {
                                             <AlertDialogHeader>
                                               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                               <AlertDialogDescription>
-                                                This action cannot be undone. This will permanently delete the material.
+                                                This action cannot be undone. This will permanently delete the material. (Mock Action)
                                               </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
