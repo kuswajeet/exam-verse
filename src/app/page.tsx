@@ -18,26 +18,26 @@ export default function LandingPage() {
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
                   <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none text-primary">
-                    Master Your Exams with Verse
+                    Master Your Exams with Confidence
                   </h1>
                   <p className="max-w-[600px] text-muted-foreground md:text-xl">
                     Our AI-powered platform provides you with personalized mock tests, real-time analytics, and expert content to help you ace your exams.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button asChild size="lg">
+                  <Button asChild size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground">
                     <Link href="/signup">
-                      Get Started for Free
+                      Start Practicing for Free
                     </Link>
                   </Button>
                 </div>
               </div>
                <Image
-                  src="https://picsum.photos/seed/1/600/400"
+                  src="https://picsum.photos/seed/2/600/400"
                   width="600"
                   height="400"
-                  alt="Hero"
-                  data-ai-hint="student learning"
+                  alt="A student studying with focus"
+                  data-ai-hint="student studying"
                   className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
                 />
             </div>
@@ -56,32 +56,32 @@ export default function LandingPage() {
                 </p>
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-3 lg:gap-12">
-              <Card>
-                <CardHeader className="flex flex-col items-center text-center">
-                   <div className="mb-4 rounded-full bg-primary p-3 text-primary-foreground"><BarChart className="h-8 w-8" /></div>
-                  <CardTitle>Real-time Analytics</CardTitle>
+            <div className="mx-auto grid max-w-5xl items-start gap-8 py-12 sm:grid-cols-2 md:grid-cols-3">
+              <Card className="text-center">
+                <CardHeader className="items-center">
+                   <div className="mb-4 rounded-full bg-primary p-4 text-primary-foreground"><BookCopy className="h-8 w-8" /></div>
+                  <CardTitle>Real Exam Simulation</CardTitle>
                 </CardHeader>
-                <CardContent className="text-center">
-                  <p>Track your progress with our detailed performance dashboard. Identify your strengths and weaknesses to focus your study efforts.</p>
+                <CardContent>
+                  <p>Experience the pressure and pattern of the actual exam with our timed and structured mock tests.</p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader className="flex flex-col items-center text-center">
-                  <div className="mb-4 rounded-full bg-primary p-3 text-primary-foreground"><BookCopy className="h-8 w-8" /></div>
-                  <CardTitle>Realistic Mock Tests</CardTitle>
+              <Card className="text-center">
+                <CardHeader className="items-center">
+                  <div className="mb-4 rounded-full bg-primary p-4 text-primary-foreground"><BarChart className="h-8 w-8" /></div>
+                  <CardTitle>Smart Analytics</CardTitle>
                 </CardHeader>
-                <CardContent className="text-center">
-                  <p>Simulate the real exam experience with our timed mock tests, covering a vast range of subjects and topics.</p>
+                <CardContent>
+                  <p>Our AI analyzes your performance to pinpoint your weak areas, helping you study smarter, not harder.</p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader className="flex flex-col items-center text-center">
-                  <div className="mb-4 rounded-full bg-primary p-3 text-primary-foreground"><Zap className="h-8 w-8" /></div>
-                  <CardTitle>AI-Powered Generation</CardTitle>
+              <Card className="text-center">
+                <CardHeader className="items-center">
+                  <div className="mb-4 rounded-full bg-primary p-4 text-primary-foreground"><Zap className="h-8 w-8" /></div>
+                  <CardTitle>Study Material</CardTitle>
                 </CardHeader>
-                <CardContent className="text-center">
-                  <p>Instantly generate practice questions for any topic, ensuring you have limitless material to test your knowledge.</p>
+                <CardContent>
+                  <p>Access a rich library of expert-curated notes and one-liner flashcards for quick revision sessions.</p>
                 </CardContent>
               </Card>
             </div>
@@ -98,7 +98,7 @@ export default function LandingPage() {
               </p>
             </div>
             <div className="mx-auto w-full max-w-sm space-y-2">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Card>
                       <CardHeader>
                           <CardTitle>Free</CardTitle>
@@ -115,7 +115,7 @@ export default function LandingPage() {
                           </Button>
                       </CardContent>
                   </Card>
-                   <Card className="border-primary">
+                   <Card className="border-primary shadow-lg">
                       <CardHeader>
                           <CardTitle>Pro</CardTitle>
                       </CardHeader>
