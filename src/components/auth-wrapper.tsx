@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
-// CRITICAL FIX: Add "/index" to the end so TypeScript finds the specific file
-import { auth } from '@/firebase/index'; 
+import { auth } from '@/firebase/client'; 
 import { Loader2 } from 'lucide-react';
 
 export default function AuthWrapper({ children }: { children: React.ReactNode }) {
