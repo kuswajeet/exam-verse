@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -227,7 +228,12 @@ export default function ManageUsersPage() {
       </CardContent>
     </Card>
 
-    <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+    <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        setIsEditDialogOpen(open);
+        if (!open) {
+            setEditingUser(null);
+        }
+    }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit User Details</DialogTitle>
@@ -236,7 +242,7 @@ export default function ManageUsersPage() {
             <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="name" className="text-right">Name</Label>
-                    <Input id="name" value={editingUser.name} onChange={(e) => setEditingUser({...editingUser, name: e.target.value})} className="col-span-3" />
+                    <Input id="name" value={editingUser.name || ''} onChange={(e) => setEditingUser({...editingUser, name: e.target.value})} className="col-span-3" />
                 </div>
                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="email" className="text-right">Email</Label>
@@ -255,3 +261,5 @@ export default function ManageUsersPage() {
     </>
   );
 }
+
+    
