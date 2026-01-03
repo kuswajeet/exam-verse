@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -71,6 +71,15 @@ export default function ManageUsersPage() {
 
   const { toast } = useToast();
 
+  // Force unlock scrolling/clicking when dialog closes
+  useEffect(() => {
+    if (!editingUser) {
+      document.body.style.pointerEvents = "";
+      document.body.style.overflow = "";
+    }
+  }, [editingUser]);
+
+
   const filteredUsers = useMemo(() => {
     return users.filter(user =>
       user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -99,8 +108,12 @@ export default function ManageUsersPage() {
   const handleSaveEdit = () => {
     if (!editingUser) return;
     setUsers(users.map(u => u.uid === editingUser.uid ? editingUser : u));
-    alert("User details updated!");
-    setEditingUser(null);
+    toast({ title: "User Updated", description: `${editingUser.name}'s details have been saved.` });
+    
+    // CRITICAL: Close the dialog firmly after a tick
+    setTimeout(() => {
+      setEditingUser(null);
+    }, 0);
   };
   
   const handleResetPassword = (email: string) => {
