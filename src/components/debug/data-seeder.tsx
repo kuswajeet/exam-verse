@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useFirestore } from '@/firebase';
+import { db } from '@/firebase/index';
 import { writeBatch, collection, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,21 +49,20 @@ const sampleQuestions: Omit<Question, 'id'>[] = [
 ];
 
 export function DataSeeder() {
-  const firestore = useFirestore();
   const { toast } = useToast();
   const [isSeeding, setIsSeeding] = useState(false);
 
   const handleSeedData = async () => {
-    if (!firestore) {
+    if (!db) {
       toast({ variant: 'destructive', title: 'Error', description: 'Firestore not available.' });
       return;
     }
     setIsSeeding(true);
 
     try {
-      const batch = writeBatch(firestore);
-      const questionsCollection = collection(firestore, 'questions');
-      const testsCollection = collection(firestore, 'tests');
+      const batch = writeBatch(db);
+      const questionsCollection = collection(db, 'questions');
+      const testsCollection = collection(db, 'tests');
 
       // 1. Create new question documents and collect their IDs
       const questionIds: string[] = [];
