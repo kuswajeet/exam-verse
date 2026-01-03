@@ -131,8 +131,7 @@ const MOCK_QUESTIONS_LIST: Question[] = [
     explanation: 'The adult human skeleton is composed of 206 bones.',
     category: 'Medical',
     examName: 'NEET',
-    subject: 'Biology',
-    topic: 'Anatomy',
+    subject: 'Anatomy',
     difficulty: 'medium',
     questionType: 'single_choice',
   },
@@ -418,3 +417,5 @@ export default function ManageQuestionsPage() {
     </Card>
   );
 }
+
+    
