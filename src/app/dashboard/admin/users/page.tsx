@@ -33,33 +33,49 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { User } from "@/lib/types";
 import { format, subDays } from 'date-fns';
-import { Trash2, Search, User as UserIcon } from "lucide-react";
+import { Trash2, Search, User as UserIcon, ShieldCheck } from "lucide-react";
+import { useToast } from '@/hooks/use-toast';
 
 // --- MOCK DATA ---
-const MOCK_USERS: User[] = [
-    { uid: 'user_1', name: 'Satoshi N.', email: 'satoshi@example.com', role: 'student', createdAt: subDays(new Date(), 1).toISOString() },
-    { uid: 'user_2', name: 'Vitalik B.', email: 'vitalik@example.com', role: 'admin', createdAt: subDays(new Date(), 5).toISOString() },
-    { uid: 'user_3', name: 'Ada Lovelace', email: 'ada@example.com', role: 'student', createdAt: subDays(new Date(), 10).toISOString() },
-    { uid: 'user_4', name: 'Grace Hopper', email: 'grace@example.com', role: 'student', createdAt: subDays(new Date(), 15).toISOString() },
-    { uid: 'user_5', name: 'Alan Turing', email: 'alan@example.com', role: 'student', createdAt: subDays(new Date(), 20).toISOString() },
+type MockUser = User & { createdAt?: string; status: 'Free' | 'Pro' };
+
+const INITIAL_MOCK_USERS: MockUser[] = [
+    { uid: 'user_1', name: 'Satoshi N.', email: 'satoshi@example.com', role: 'student', createdAt: subDays(new Date(), 1).toISOString(), status: 'Pro' },
+    { uid: 'user_2', name: 'Vitalik B.', email: 'vitalik@example.com', role: 'admin', createdAt: subDays(new Date(), 5).toISOString(), status: 'Pro' },
+    { uid: 'user_3', name: 'Ada Lovelace', email: 'ada@example.com', role: 'student', createdAt: subDays(new Date(), 10).toISOString(), status: 'Free' },
+    { uid: 'user_4', name: 'Grace Hopper', email: 'grace@example.com', role: 'student', createdAt: subDays(new Date(), 15).toISOString(), status: 'Free' },
+    { uid: 'user_5', name: 'Alan Turing', email: 'alan@example.com', role: 'student', createdAt: subDays(new Date(), 20).toISOString(), status: 'Free' },
 ];
 
 
 export default function ManageUsersPage() {
+  const [users, setUsers] = useState<MockUser[]>(INITIAL_MOCK_USERS);
   const [searchTerm, setSearchTerm] = useState('');
+  const { toast } = useToast();
 
   const filteredUsers = useMemo(() => {
-    return MOCK_USERS.filter(user =>
+    return users.filter(user =>
       user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [searchTerm]);
+  }, [users, searchTerm]);
 
-  const handleDeleteUser = (userName: string) => {
-    alert(`User deleted (Simulation): ${userName}`);
+  const handleDeleteUser = (userId: string) => {
+    setUsers(users.filter(u => u.uid !== userId));
+    toast({ title: "User Deleted (Mock)", description: "The user has been removed from the list." });
+  };
+  
+  const handleUpgradeUser = (userId: string) => {
+    setUsers(users.map(u => u.uid === userId ? { ...u, status: 'Pro' } : u));
+    alert("User upgraded to Pro Plan successfully!");
+    toast({ 
+        title: "Upgrade Successful", 
+        description: "User has been upgraded to the Pro plan.",
+        className: 'bg-green-100 dark:bg-green-900',
+    });
   };
 
-  const getJoinedDate = (user: User & { createdAt?: string }) => {
+  const getJoinedDate = (user: MockUser) => {
     if (user.createdAt) {
       return format(new Date(user.createdAt), 'PP');
     }
@@ -90,6 +106,7 @@ export default function ManageUsersPage() {
               <TableHead>Display Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Joined Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -105,41 +122,54 @@ export default function ManageUsersPage() {
                       {user.role}
                     </Badge>
                   </TableCell>
-                   <TableCell>{getJoinedDate(user as User & { createdAt?: string })}</TableCell>
+                  <TableCell>
+                    <Badge variant={user.status === 'Pro' ? 'default' : 'outline'} className={user.status === 'Pro' ? 'bg-yellow-500 text-white' : ''}>
+                      {user.status}
+                    </Badge>
+                  </TableCell>
+                   <TableCell>{getJoinedDate(user)}</TableCell>
                   <TableCell className="text-right">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Delete User</span>
+                    <div className="flex items-center justify-end gap-2">
+                      {user.status === 'Free' && user.role !== 'admin' && (
+                        <Button variant="outline" size="sm" onClick={() => handleUpgradeUser(user.uid)}>
+                          <ShieldCheck className="mr-2 h-4 w-4" />
+                          Upgrade
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This is a mock action. This would permanently delete the user account for <span className="font-medium">{user.email}</span>.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction 
-                            onClick={() => handleDeleteUser(user.name || user.email)}
-                            className="bg-destructive hover:bg-destructive/90"
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete User</span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This is a mock action. This would permanently delete the user account for <span className="font-medium">{user.email}</span>.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleDeleteUser(user.uid)}
+                              className="bg-destructive hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
             ) : (
                 <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                         <UserIcon className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                        No users found.
+                        No users found matching your search.
                     </TableCell>
                 </TableRow>
             )}
