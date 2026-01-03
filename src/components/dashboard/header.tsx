@@ -5,8 +5,6 @@ import Link from "next/link";
 import {
   CircleUser,
   Menu,
-  Search,
-  Package2,
   BookOpen,
   BarChart,
   Trophy,
@@ -21,6 +19,7 @@ import {
   Settings,
   LogOut,
   Star,
+  Package2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,18 +31,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useUser } from "@/firebase/provider";
-import { Skeleton } from "../ui/skeleton";
 import { useRouter } from "next/navigation";
 
+// Mock user data to prevent Firebase network calls
+const user = { 
+  name: "Satoshi N.", 
+  email: "satoshi@example.com",
+};
+
+
 export function DashboardHeader() {
-  const { user, isUserLoading } = useUser();
   const router = useRouter();
 
   const handleLogout = () => {
     if (confirm("Are you sure you want to log out?")) {
+      // Client-side logout: clear mock session and redirect
       localStorage.removeItem("isPro");
       router.push("/");
     }
@@ -121,19 +124,13 @@ export function DashboardHeader() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="secondary" size="icon" className="rounded-full">
-            {isUserLoading ? (
-                <Skeleton className="h-8 w-8 rounded-full" />
-            ) : user?.photoURL ? (
-                <img src={user.photoURL} width={36} height={36} alt="User avatar" className="rounded-full" />
-            ) : (
-                <CircleUser className="h-5 w-5" />
-            )}
+            <CircleUser className="h-5 w-5" />
             <span className="sr-only">Toggle user menu</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
-          <DropdownMenuSeparator />
+           <DropdownMenuSeparator />
            <DropdownMenuItem asChild>
             <Link href="/dashboard/subscription">
                 <Star className="mr-2 h-4 w-4" />

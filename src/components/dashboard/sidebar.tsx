@@ -29,6 +29,7 @@ export function DashboardSidebar() {
 
   const handleLogout = () => {
     if (confirm("Are you sure you want to log out?")) {
+      // Client-side logout: clear mock session and redirect
       localStorage.removeItem("isPro");
       router.push("/");
     }
