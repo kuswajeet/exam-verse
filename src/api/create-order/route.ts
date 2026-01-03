@@ -1,22 +1,25 @@
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 
-// 1. Force Dynamic Mode
+// 1. Force this route to be dynamic (never static)
 export const dynamic = 'force-dynamic';
 
 export async function POST() {
   try {
-    // 2. Initialize Razorpay with a FALLBACK for build time
-    // If keys are missing (during build), use "dummy_key" so it doesn't crash.
-    // When running live, it will use the real process.env keys.
+    // 2. SAFETY TRICK:
+    // If the real keys are missing (like during the Vercel build),
+    // we use fake "placeholder" text. This prevents the "key_id mandatory" crash.
+    // When the app runs live, it will use the real process.env keys.
     const razorpay = new Razorpay({
-      key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_12345678901234",
-      key_secret: process.env.RAZORPAY_KEY_SECRET || "dummy_secret_for_build",
+      key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_placeholder_123",
+      key_secret: process.env.RAZORPAY_KEY_SECRET || "secret_placeholder_123",
     });
 
-    // 3. Runtime Check: If we are actually trying to pay but keys are dummy, stop.
+    // 3. REAL CHECK:
+    // If we are actually trying to pay (Runtime) and keys are still missing, THEN we stop.
     if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
-       return NextResponse.json({ error: "Payment config missing" }, { status: 500 });
+      console.error("Razorpay Error: Real keys are missing in Vercel Settings!");
+      return NextResponse.json({ error: "Payment configuration missing" }, { status: 500 });
     }
 
     const order = await razorpay.orders.create({
@@ -26,10 +29,12 @@ export async function POST() {
     });
 
     return NextResponse.json({ orderId: order.id }, { status: 200 });
-  } catch (error) {
+
+  } catch (error: any) {
     console.error("Error creating order:", error);
+    // Handle the specific error if the placeholder keys are used to try a real payment
     return NextResponse.json(
-      { error: "Error creating order" },
+      { error: error.message || "Error creating order" },
       { status: 500 }
     );
   }
