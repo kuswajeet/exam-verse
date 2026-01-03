@@ -9,6 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Test } from '@/lib/types';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+
 
 export default function TestsPage() {
   const [tests, setTests] = useState<Test[]>([]);
@@ -60,7 +66,8 @@ export default function TestsPage() {
   const defaultTab = categories.length > 0 ? categories[0] : 'General';
 
   // 3. Purchase Handler (Mock)
-  const handlePurchase = (examName: string) => {
+  const handlePurchase = (e: React.MouseEvent, examName: string) => {
+    e.stopPropagation();
     const confirmed = confirm(`Unlock ${examName} bundle for full access?`);
     if (confirmed) {
       setPurchasedBundles([...purchasedBundles, examName]);
@@ -91,7 +98,57 @@ export default function TestsPage() {
 
           {categories.map(category => (
             <TabsContent key={category} value={category} className="space-y-6">
-              
+              {Object.entries(groupedData[category] || {}).map(([examName, bundle]: [string, any]) => {
+                const isUnlocked = bundle.price === 0 || purchasedBundles.includes(examName);
+                const totalTests = (bundle.tests.full?.length || 0) + (bundle.tests.subject?.length || 0) + (bundle.tests.topic?.length || 0);
+
+                return (
+                  <Collapsible key={examName} className="border rounded-lg bg-card shadow-sm">
+                    <CollapsibleTrigger className="flex w-full items-center justify-between p-4 hover:bg-muted/50 rounded-t-lg">
+                       <div className="text-left space-y-1">
+                          <div className="flex items-center gap-3">
+                            <h3 className="text-xl font-bold">{examName}</h3>
+                            {bundle.price > 0 && !isUnlocked && (
+                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                <Lock size={12} className="mr-1"/> Locked
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground font-normal">{totalTests} Tests Included</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                           {!isUnlocked && bundle.price > 0 && (
+                            <Button 
+                              size="sm" 
+                              onClick={(e) => handlePurchase(e, examName)}
+                              className="bg-accent hover:bg-accent/90 text-accent-foreground gap-2 hidden md:flex"
+                            >
+                              <ShoppingCart size={16} /> Unlock for ₹{bundle.price}
+                            </Button>
+                          )}
+                          {isUnlocked && (
+                             <Badge className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">Purchased</Badge>
+                          )}
+                          <ChevronDown className="h-5 w-5 transition-transform data-[state=open]:rotate-180" />
+                        </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="border-t">
+                      <div className="p-4 space-y-4 bg-muted/50">
+                        {bundle.tests.full.length > 0 && (
+                          <TestSection title="🏆 Full Mock Tests" tests={bundle.tests.full} isUnlocked={isUnlocked} router={router} />
+                        )}
+                        {bundle.tests.subject.length > 0 && (
+                          <TestSection title="📚 Subject Wise Tests" tests={bundle.tests.subject} isUnlocked={isUnlocked} router={router} />
+                        )}
+                        {bundle.tests.topic.length > 0 && (
+                          <TestSection title="📝 Topic Wise Practice" tests={bundle.tests.topic} isUnlocked={isUnlocked} router={router} />
+                        )}
+                        {totalTests === 0 && <p className="text-muted-foreground italic text-center py-4">No tests added to this bundle yet.</p>}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                );
+              })}
             </TabsContent>
           ))}
         </Tabs>
@@ -103,15 +160,16 @@ export default function TestsPage() {
 // Helper Component for the Lists
 function TestSection({ title, tests, isUnlocked, router }: any) {
   return (
-    <div className="border rounded-md overflow-hidden">
-      <div className="bg-gray-50 px-4 py-2 font-semibold border-b text-gray-700">{title}</div>
+    <div className="border rounded-md overflow-hidden bg-card">
+      <div className="bg-secondary px-4 py-2 font-semibold border-b text-secondary-foreground text-sm">{title}</div>
       <div className="divide-y">
         {tests.map((test: any) => (
-          <div key={test.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+          <div key={test.id} className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
             <div>
               <p className="font-medium">{test.title}</p>
-              <div className="flex gap-2 text-xs text-gray-500 mt-1">
-                <span>{test.questions.length} Questions</span> • <span>{test.duration} mins</span>
+              <div className="flex gap-4 text-xs text-muted-foreground mt-1">
+                <span>{test.questionCount || test.questionIds?.length || 0} Questions</span>
+                <span>{test.durationMinutes} mins</span>
               </div>
             </div>
             
@@ -119,7 +177,7 @@ function TestSection({ title, tests, isUnlocked, router }: any) {
               size="sm" 
               disabled={!isUnlocked} 
               onClick={() => router.push(`/dashboard/tests/${test.id}`)}
-              className={isUnlocked ? "bg-blue-600 hover:bg-blue-700" : ""}
+              className={isUnlocked ? "bg-primary hover:bg-primary/90" : ""}
             >
               {isUnlocked ? <><PlayCircle size={16} className="mr-2"/> Start</> : <><Lock size={16} className="mr-2"/> Locked</>}
             </Button>
