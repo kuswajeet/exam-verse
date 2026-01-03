@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.examverse.app",
+        "sha256_cert_fingerprints": ["DE:17:35:2B:F6:2C:BA:86:65:AF:D9:5D:D9:A8:84:CD:42:5C:A8:E8:34:30:A9:B5:F8:21:81:3C:3F:A6:07:C3"]
+      }
+    }]
