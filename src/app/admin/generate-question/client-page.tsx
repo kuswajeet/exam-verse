@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -8,99 +8,72 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { generateQuestionsAction, FormState } from "./actions";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { BrainCircuit, CheckCircle, Copy, Loader, Save, Terminal, XCircle, FileWarning } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import type { Question } from "@/lib/types";
-import { Textarea } from "@/components/ui/textarea";
-import { useFirestore } from "@/firebase";
-import { writeBatch, doc, collection } from "firebase/firestore";
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { generateQuestionsAction, FormState } from './actions';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { BrainCircuit, FileWarning, Loader, Save, Terminal } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import type { Question } from '@/lib/types';
+import { Textarea } from '@/components/ui/textarea';
 
 const initialState: FormState = {
-  status: "idle",
+  status: 'idle',
   data: null,
-  message: "",
+  message: '',
 };
 
 export function GenerateQuestionClientPage() {
   const [state, formAction, isGenerating] = useActionState(generateQuestionsAction, initialState);
   const { toast } = useToast();
-  const firestore = useFirestore();
 
   const [editableQuestions, setEditableQuestions] = useState<Question[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  
-  useState(() => {
-    if(state.status === 'success' && state.data) {
-        setEditableQuestions(state.data.questions);
+
+  useEffect(() => {
+    if (state.status === 'success' && state.data) {
+      setEditableQuestions(state.data.questions);
     }
-  });
+  }, [state]);
 
-
-  const handleQuestionChange = (index: number, field: keyof Question, value: string | number) => {
+  const handleQuestionChange = (index: number, field: keyof Question, value: string | number | string[]) => {
     if (!editableQuestions) return;
 
     const newQuestions = [...editableQuestions];
     (newQuestions[index] as any)[field] = value;
     setEditableQuestions(newQuestions);
   };
-  
+
   const handleSaveToFirestore = async () => {
-    if (!editableQuestions || !firestore) {
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "No questions to save or database not available.",
-        });
-        return;
+    if (!editableQuestions) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No questions to save.',
+      });
+      return;
     }
 
     setIsSaving(true);
-    try {
-        const batch = writeBatch(firestore);
-        const questionsRef = collection(firestore, "questions");
-
-        editableQuestions.forEach((question) => {
-            const questionId = `gen-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-            const docRef = doc(questionsRef, questionId);
-            batch.set(docRef, {
-                ...question,
-                id: questionId, // Ensure the ID is part of the document data
-                questionType: 'single_choice', // default
-            });
-        });
-
-        await batch.commit();
-
+    // --- MOCK SAVE ---
+    setTimeout(() => {
         toast({
-            title: "Success!",
-            description: `${editableQuestions.length} questions have been saved to Firestore.`,
+            title: "Success! (Mock)",
+            description: `${editableQuestions.length} questions have been 'saved' to the Question Bank.`,
             className: "bg-green-100 dark:bg-green-900"
         });
         setEditableQuestions(null); // Clear the form
-    } catch (error) {
-        console.error("Error saving questions to Firestore:", error);
-        toast({
-            variant: "destructive",
-            title: "Firestore Error",
-            description: error instanceof Error ? error.message : "Could not save questions.",
-        });
-    } finally {
         setIsSaving(false);
-    }
+    }, 1000);
   };
 
 
@@ -194,7 +167,7 @@ export function GenerateQuestionClientPage() {
                         <CardDescription>Edit any question details below before saving to the database.</CardDescription>
                     </div>
                      <Button onClick={handleSaveToFirestore} disabled={isSaving}>
-                        {isSaving ? <><Loader className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Save to Firestore</>}
+                        {isSaving ? <><Loader className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Save Questions</>}
                     </Button>
                 </div>
                  {state.message.includes('mock') && (
@@ -217,7 +190,7 @@ export function GenerateQuestionClientPage() {
                                <Input key={optIndex} value={opt} onChange={(e) => {
                                    const newOptions = [...q.options];
                                    newOptions[optIndex] = e.target.value;
-                                   handleQuestionChange(index, 'options', newOptions as any);
+                                   handleQuestionChange(index, 'options', newOptions);
                                }}/>
                            ))}
                         </div>
@@ -247,7 +220,7 @@ export function GenerateQuestionClientPage() {
             </CardContent>
              <CardFooter>
                  <Button onClick={handleSaveToFirestore} disabled={isSaving}>
-                    {isSaving ? <><Loader className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Save to Firestore</>}
+                    {isSaving ? <><Loader className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Save Questions</>}
                 </Button>
             </CardFooter>
           </Card>
