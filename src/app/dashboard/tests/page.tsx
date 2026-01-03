@@ -14,6 +14,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { DataSeeder } from '@/components/debug/data-seeder';
 
 
 export default function TestsPage() {
@@ -79,6 +80,7 @@ export default function TestsPage() {
 
   return (
     <div className="p-6 space-y-6">
+      <DataSeeder />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Exam Series</h1>
         <p className="text-gray-500">Select an exam bundle to view full mock tests, subject tests, and topic practice.</p>
@@ -86,7 +88,7 @@ export default function TestsPage() {
 
       {categories.length === 0 ? (
         <div className="text-center p-12 border rounded-lg bg-gray-50">
-          <p>No tests available right now. Admin needs to create some!</p>
+          <p>No tests available right now. Click the "Inject Data" button above to add a sample test.</p>
         </div>
       ) : (
         <Tabs defaultValue={defaultTab} className="w-full">
