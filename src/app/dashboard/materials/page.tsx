@@ -2,9 +2,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { getMockMaterials } from '@/lib/mock-data';
 import type { Material } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,18 +18,24 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useEffect } from 'react';
 
 export default function StudyMaterialsPage() {
-  const firestore = useFirestore();
+  const [materials, setMaterials] = useState<Omit<Material, 'createdAt'>[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
-  
-  const materialsQuery = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'materials'), orderBy('createdAt', 'desc')) : null, 
-    [firestore]
-  );
-  const { data: materials, isLoading } = useCollection<Material>(materialsQuery);
+  const [selectedMaterial, setSelectedMaterial] = useState<Omit<Material, 'createdAt'> | null>(null);
 
+  useEffect(() => {
+    async function loadData() {
+      setIsLoading(true);
+      const data = await getMockMaterials();
+      setMaterials(data);
+      setIsLoading(false);
+    }
+    loadData();
+  }, []);
+  
   const uniqueSubjects = useMemo(() => {
     if (!materials) return [];
     return ['All', ...Array.from(new Set(materials.map(m => m.subject)))];
@@ -49,8 +53,10 @@ export default function StudyMaterialsPage() {
 
   const getEmbeddablePdfUrl = (url: string) => {
     if (url.includes("drive.google.com")) {
+      // Handles links like "drive.google.com/file/d/.../view"
       return url.replace("/view", "/preview");
     }
+    // For direct PDF links, this helps hide toolbars in some browsers
     return `${url}#toolbar=0&navpanes=0&scrollbar=0`;
   };
 
