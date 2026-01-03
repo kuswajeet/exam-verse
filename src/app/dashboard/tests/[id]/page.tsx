@@ -63,7 +63,7 @@ export default function TestPage({ params }: { params: { id: string } }) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
-  const { id: testId } = params;
+  const testId = params.id;
 
   const [test, setTest] = useState<TestWithQuestions | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -269,3 +269,5 @@ export default function TestPage({ params }: { params: { id: string } }) {
     </div>
   );
 }
+
+    
