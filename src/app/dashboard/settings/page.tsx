@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -31,7 +32,7 @@ export default function SettingsPage() {
     const proStatus = localStorage.getItem('isPro') === 'true';
     setIsPro(proStatus);
 
-    if (user) {
+    if (user && firestore) {
       const userDocRef = doc(firestore, 'users', user.uid);
       getDoc(userDocRef).then(userSnap => {
         if (userSnap.exists()) {
@@ -53,7 +54,7 @@ export default function SettingsPage() {
   // 2. Handle Save
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !firestore) return;
 
     setSaving(true);
     try {
@@ -82,6 +83,7 @@ export default function SettingsPage() {
   };
   
   const handleCancelSubscription = () => {
+    // This is a mock action. In a real app, this would redirect to a Stripe/billing portal.
     alert("Subscription management coming soon! For now, this is a mock action.");
   };
 
