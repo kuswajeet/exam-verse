@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -59,7 +60,8 @@ export function DashboardSidebar() {
       items: [
         { name: 'Manage Users', href: '/dashboard/admin/users', icon: Users },
         { name: 'Manage Questions', href: '/admin/questions', icon: FileText },
-        { name: 'Create Test', href: '/dashboard/admin/create', icon: PlusCircle },
+        { name: 'Create Test (Select)', href: '/admin/create-test', icon: PlusCircle },
+        { name: 'Create Test (Manual)', href: '/dashboard/admin/create', icon: PlusCircle },
         { name: 'AI Generator', href: '/admin/generate-question', icon: Sparkles },
         { name: 'Bulk Upload', href: '/admin/upload-questions', icon: UploadCloud },
         { name: 'Manage Materials', href: '/admin/materials', icon: Library },

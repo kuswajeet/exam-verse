@@ -1,19 +1,19 @@
 
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CreateTestClientPage } from "@/app/admin/create-test/client-page";
+import { CreateTestManualClientPage } from "./client-page";
 
 export default function CreateTestAdminPage() {
   return (
     <div className="space-y-6">
        <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Create a New Test</CardTitle>
+          <CardTitle className="text-2xl">Create a New Test Manually</CardTitle>
           <CardDescription>
-            Configure the details of a new test. The questions will be automatically fetched based on the selected criteria.
+            Define test details and add questions from scratch. For creating tests from existing questions, use the main "Create Test" page.
           </CardDescription>
         </CardHeader>
       </Card>
-      <CreateTestClientPage />
+      <CreateTestManualClientPage />
     </div>
   );
 }
