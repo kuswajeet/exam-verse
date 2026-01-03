@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -56,7 +56,7 @@ async function getTestWithQuestions(firestore: any, testId: string): Promise<Tes
 }
 
 export default function ResultDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+  const id = params.id;
   const { user } = useUser();
   const firestore = useFirestore();
   const [test, setTest] = useState<TestWithQuestions | null>(null);
