@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -28,15 +27,31 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { User } from "@/lib/types";
 import { format, subDays } from 'date-fns';
-import { Trash2, Search, User as UserIcon, ShieldCheck } from "lucide-react";
+import { Trash2, Search, User as UserIcon, ShieldCheck, MoreHorizontal, Edit, KeyRound, ArrowDown, ArrowUp } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
-// --- MOCK DATA ---
 type MockUser = User & { createdAt?: string; status: 'Free' | 'Pro' };
 
 const INITIAL_MOCK_USERS: MockUser[] = [
@@ -51,6 +66,9 @@ const INITIAL_MOCK_USERS: MockUser[] = [
 export default function ManageUsersPage() {
   const [users, setUsers] = useState<MockUser[]>(INITIAL_MOCK_USERS);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<MockUser | null>(null);
+
   const { toast } = useToast();
 
   const filteredUsers = useMemo(() => {
@@ -65,15 +83,32 @@ export default function ManageUsersPage() {
     toast({ title: "User Deleted (Mock)", description: "The user has been removed from the list." });
   };
   
-  const handleUpgradeUser = (userId: string) => {
-    setUsers(users.map(u => u.uid === userId ? { ...u, status: 'Pro' } : u));
-    alert("User upgraded to Pro Plan successfully!");
+  const handleTogglePlan = (userId: string) => {
+    setUsers(users.map(u => u.uid === userId ? { ...u, status: u.status === 'Pro' ? 'Free' : 'Pro' } : u));
     toast({ 
-        title: "Upgrade Successful", 
-        description: "User has been upgraded to the Pro plan.",
+        title: "Plan Changed", 
+        description: "User subscription status has been updated.",
         className: 'bg-green-100 dark:bg-green-900',
     });
   };
+
+  const handleOpenEditDialog = (user: MockUser) => {
+    setEditingUser({ ...user });
+    setIsEditDialogOpen(true);
+  }
+
+  const handleSaveEdit = () => {
+    if (!editingUser) return;
+    setUsers(users.map(u => u.uid === editingUser.uid ? editingUser : u));
+    alert("User details updated!");
+    setIsEditDialogOpen(false);
+    setEditingUser(null);
+  };
+  
+  const handleResetPassword = (email: string) => {
+    alert(`Password reset link sent to ${email}`);
+  };
+
 
   const getJoinedDate = (user: MockUser) => {
     if (user.createdAt) {
@@ -83,6 +118,7 @@ export default function ManageUsersPage() {
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle>Manage Users</CardTitle>
@@ -123,45 +159,58 @@ export default function ManageUsersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.status === 'Pro' ? 'default' : 'outline'} className={user.status === 'Pro' ? 'bg-yellow-500 text-white' : ''}>
+                    <Badge variant={user.status === 'Pro' ? 'default' : 'outline'} className={user.status === 'Pro' ? 'bg-amber-500 text-white' : ''}>
                       {user.status}
                     </Badge>
                   </TableCell>
                    <TableCell>{getJoinedDate(user)}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {user.status === 'Free' && user.role !== 'admin' && (
-                        <Button variant="outline" size="sm" onClick={() => handleUpgradeUser(user.uid)}>
-                          <ShieldCheck className="mr-2 h-4 w-4" />
-                          Upgrade
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
-                      )}
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Delete User</span>
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This is a mock action. This would permanently delete the user account for <span className="font-medium">{user.email}</span>.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleDeleteUser(user.uid)}
-                              className="bg-destructive hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => handleOpenEditDialog(user)}>
+                          <Edit className="mr-2 h-4 w-4" /> Edit Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleResetPassword(user.email)}>
+                          <KeyRound className="mr-2 h-4 w-4" /> Reset Password
+                        </DropdownMenuItem>
+                        {user.role !== 'admin' && (
+                           <DropdownMenuItem onClick={() => handleTogglePlan(user.uid)}>
+                              {user.status === 'Free' ? (
+                                <><ArrowUp className="mr-2 h-4 w-4" /> Upgrade to Pro</>
+                              ) : (
+                                <><ArrowDown className="mr-2 h-4 w-4" /> Downgrade to Free</>
+                              )}
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                               <Button variant="ghost" className="w-full justify-start text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/50 dark:hover:text-red-400 relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete User
+                               </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete the user account for <span className="font-medium">{user.email}</span>. (Mock Action)
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteUser(user.uid)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))
@@ -177,5 +226,32 @@ export default function ManageUsersPage() {
         </Table>
       </CardContent>
     </Card>
+
+    <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit User Details</DialogTitle>
+        </DialogHeader>
+        {editingUser && (
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">Name</Label>
+                    <Input id="name" value={editingUser.name} onChange={(e) => setEditingUser({...editingUser, name: e.target.value})} className="col-span-3" />
+                </div>
+                 <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="email" className="text-right">Email</Label>
+                    <Input id="email" value={editingUser.email} onChange={(e) => setEditingUser({...editingUser, email: e.target.value})} className="col-span-3" />
+                </div>
+            </div>
+        )}
+        <DialogFooter>
+          <DialogClose asChild>
+             <Button variant="outline">Cancel</Button>
+          </DialogClose>
+          <Button onClick={handleSaveEdit}>Save Changes</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
