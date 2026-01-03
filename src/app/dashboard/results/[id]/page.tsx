@@ -56,7 +56,7 @@ async function getTestWithQuestions(firestore: any, testId: string): Promise<Tes
 }
 
 export default function ResultDetailPage({ params }: { params: { id: string } }) {
-  const id = params.id;
+  const { id } = params;
   const { user } = useUser();
   const firestore = useFirestore();
   const [test, setTest] = useState<TestWithQuestions | null>(null);
