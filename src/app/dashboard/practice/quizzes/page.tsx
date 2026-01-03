@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -123,7 +124,7 @@ export default function QuizzesPage() {
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <div className="flex items-center gap-2">
                            <FileQuestion className="h-4 w-4" />
-                           <span>{quiz.questionCount || 0} Questions</span>
+                           <span>{quiz.questionCount || quiz.questions?.length || 0} Questions</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4" />
