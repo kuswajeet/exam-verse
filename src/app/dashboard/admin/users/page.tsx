@@ -42,9 +42,6 @@ const MOCK_USERS: User[] = [
     { uid: 'user_3', name: 'Ada Lovelace', email: 'ada@example.com', role: 'student', createdAt: subDays(new Date(), 10).toISOString() },
     { uid: 'user_4', name: 'Grace Hopper', email: 'grace@example.com', role: 'student', createdAt: subDays(new Date(), 15).toISOString() },
     { uid: 'user_5', name: 'Alan Turing', email: 'alan@example.com', role: 'student', createdAt: subDays(new Date(), 20).toISOString() },
-    { uid: 'user_6', name: 'Margaret H.', email: 'margaret@example.com', role: 'admin', createdAt: subDays(new Date(), 25).toISOString() },
-    { uid: 'user_7', name: 'Linus T.', email: 'linus@example.com', role: 'student', createdAt: subDays(new Date(), 30).toISOString() },
-    { uid: 'user_8', name: 'John Carmack', email: 'john@example.com', role: 'student', createdAt: subDays(new Date(), 35).toISOString() },
 ];
 
 
@@ -59,7 +56,7 @@ export default function ManageUsersPage() {
   }, [searchTerm]);
 
   const handleDeleteUser = (userName: string) => {
-    alert(`(Mock) Deleted user: ${userName}`);
+    alert(`User deleted (Simulation): ${userName}`);
   };
 
   const getJoinedDate = (user: User & { createdAt?: string }) => {
