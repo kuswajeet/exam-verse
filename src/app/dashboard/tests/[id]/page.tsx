@@ -8,7 +8,7 @@ import { useFirestore, useUser } from '@/firebase/provider';
 import type { Test, Question, TestWithQuestions } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,6 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Clock, HelpCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 // Helper function to fetch test and its questions, handling Firestore's 'in' query limit
 async function getTestWithQuestions(firestore: any, testId: string): Promise<TestWithQuestions | null> {
@@ -76,14 +77,17 @@ export default function TestPage({ params }: { params: { id: string } }) {
     if (!firestore || !testId) return;
 
     async function fetchTest() {
+      console.log('Start Fetching Test:', testId);
       try {
         setIsLoading(true);
         const testData = await getTestWithQuestions(firestore, testId);
         if (testData) {
+          console.log('Test Data Found:', testData);
           setTest(testData);
           setTimeLeft(testData.durationMinutes * 60);
         } else {
             toast({ variant: 'destructive', title: 'Error', description: 'Test not found.' });
+            console.log('Error: Test not found for ID:', testId);
         }
       } catch (error) {
         console.error('Error fetching test:', error);
@@ -164,11 +168,71 @@ export default function TestPage({ params }: { params: { id: string } }) {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    return (
+      <div className="flex flex-col h-full">
+        <header className="flex items-center justify-between p-4 border-b bg-card">
+          <Skeleton className="h-7 w-1/2" />
+          <Skeleton className="h-9 w-24 rounded-full" />
+        </header>
+        <div className="flex-grow grid grid-cols-1 lg:grid-cols-4 gap-6 p-6">
+          <div className="lg:col-span-3">
+            <Card className="h-full flex flex-col">
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent className="flex-grow space-y-6">
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-full" />
+                  <Skeleton className="h-5 w-3/4" />
+                </div>
+                <div className="space-y-3">
+                  <Skeleton className="h-14 w-full rounded-lg" />
+                  <Skeleton className="h-14 w-full rounded-lg" />
+                  <Skeleton className="h-14 w-full rounded-lg" />
+                  <Skeleton className="h-14 w-full rounded-lg" />
+                </div>
+              </CardContent>
+              <CardFooter className="justify-between">
+                <Skeleton className="h-10 w-24" />
+                <Skeleton className="h-10 w-24" />
+              </CardFooter>
+            </Card>
+          </div>
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
+              <CardContent className="grid grid-cols-5 gap-2">
+                {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-10 w-10" />)}
+              </CardContent>
+              <CardFooter><Skeleton className="h-10 w-full" /></CardFooter>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!test) {
     return <div className="text-center py-10">Test not found or could not be loaded.</div>;
+  }
+
+  // Safety check for questions
+  if (!test.questions || !Array.isArray(test.questions) || test.questions.length === 0) {
+      return (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+              <Card className="w-full max-w-md">
+                  <CardHeader>
+                      <CardTitle className="text-destructive">Data Error</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                      <p>Data Corrupted: No questions were found for this test. Please contact an administrator.</p>
+                  </CardContent>
+                  <CardFooter>
+                    <Button onClick={() => router.back()}>Go Back</Button>
+                  </CardFooter>
+              </Card>
+          </div>
+      );
   }
   
   const currentQuestion = test.questions[currentQuestionIndex];
@@ -179,7 +243,9 @@ export default function TestPage({ params }: { params: { id: string } }) {
     <div className="flex flex-col h-full">
       <header className="flex items-center justify-between p-4 border-b bg-card">
         <h1 className="text-xl font-bold truncate">{test.title}</h1>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 font-mono text-lg">
+        <div className={cn("flex items-center gap-2 px-3 py-1.5 rounded-full font-mono text-lg",
+          timeLeft < 60 ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300" : "bg-muted text-muted-foreground"
+        )}>
           <Clock className="h-5 w-5" />
           <span>{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}</span>
         </div>
