@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useAuth, useFirestore } from "@/firebase/provider";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { setDoc, doc } from "firebase/firestore";
+import { auth } from "@/firebase/config";
 
 const signupSchema = z.object({
   fullName: z.string().min(2, { message: "Name too short" }),

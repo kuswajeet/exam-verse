@@ -2,20 +2,20 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
+// DIRECT KEY INJECTION (Bypassing Vercel Env Vars)
 const firebaseConfig = {
-  // The "||" operator prevents the build crash
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "mock_key_for_build",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "mock_domain",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "mock_project",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "mock_bucket",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "mock_sender",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "mock_app_id",
+  apiKey: "AIzaSyAa9Q9ugfETMSFnVX99sBcs1i25KEurzIk",
+  authDomain: "studio-8465754929-f1e1f.firebaseapp.com",
+  projectId: "studio-8465754929-f1e1f",
+  storageBucket: "studio-8465754929-f1e1f.firebasestorage.app",
+  messagingSenderId: "738536341108",
+  appId: "1:738536341108:web:b4f668c1c34dad9c5d9b21"
 };
 
-// Initialize Firebase (Singleton Pattern)
+// Initialize Firebase
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// CRITICAL FIX: Export firebaseConfig so index.ts can use it if needed
+// Export everything including the config
 export { auth, db, app, firebaseConfig };
