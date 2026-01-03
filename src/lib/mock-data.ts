@@ -217,6 +217,7 @@ export const MOCK_TESTS: TestWithQuestions[] = [
     testSubType: 'full',
     durationMinutes: 10,
     totalMarks: 5,
+    questionCount: 5,
     questionIds: ['sci-q1', 'sci-q2', 'sci-q3', 'sci-q4', 'sci-q5'],
     questions: MOCK_QUESTIONS.slice(0, 5),
   },
@@ -224,7 +225,7 @@ export const MOCK_TESTS: TestWithQuestions[] = [
     id: 'test-hist',
     title: 'History Special',
     subject: 'History',
-    category: 'Topic-wise',
+    category: 'General',
     examName: 'History Special',
     isFree: false,
     price: 5,
@@ -232,6 +233,7 @@ export const MOCK_TESTS: TestWithQuestions[] = [
     testSubType: 'subject',
     durationMinutes: 10,
     totalMarks: 5,
+    questionCount: 5,
     questionIds: ['hist-q1', 'hist-q2', 'hist-q3', 'hist-q4', 'hist-q5'],
     questions: MOCK_QUESTIONS.slice(5, 10),
   },
@@ -241,12 +243,13 @@ export const MOCK_TESTS: TestWithQuestions[] = [
     subject: 'Math',
     category: 'General',
     examName: 'Math Basics',
-    isFree: true,
-    price: 0,
-    examPrice: 0,
+    isFree: false,
+    price: 5,
+    examPrice: 25,
     testSubType: 'topic',
     durationMinutes: 10,
     totalMarks: 5,
+    questionCount: 5,
     questionIds: ['math-q1', 'math-q2', 'math-q3', 'math-q4', 'math-q5'],
     questions: MOCK_QUESTIONS.slice(10, 15),
   },
@@ -341,3 +344,5 @@ export async function getMockOneLiners(): Promise<Question[]> {
     await delay(ARTIFICIAL_DELAY);
     return MOCK_ONE_LINERS;
 }
+
+    
