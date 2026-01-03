@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Script from "next/script";
 import { useAuth } from "@/hooks/use-auth"; // Adjust import path if needed (e.g. "@/components/auth-provider")
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/firebase/config";
 import { doc, updateDoc } from "firebase/firestore";
 import { Loader2, Check, ShieldCheck } from "lucide-react";
 
