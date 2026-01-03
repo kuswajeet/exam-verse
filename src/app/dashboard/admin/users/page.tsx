@@ -50,7 +50,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { User } from "@/lib/types";
 import { format, subDays } from 'date-fns';
-import { Trash2, Search, User as UserIcon, ShieldCheck, MoreHorizontal, Edit, KeyRound, ArrowDown, ArrowUp } from "lucide-react";
+import { Trash2, Search, User as UserIcon, MoreHorizontal, Edit, KeyRound, ArrowDown, ArrowUp } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
 type MockUser = User & { createdAt?: string; status: 'Free' | 'Pro' };
@@ -71,11 +71,15 @@ export default function ManageUsersPage() {
 
   const { toast } = useToast();
 
-  // Force unlock scrolling/clicking when dialog closes
+  // NUCLEAR FIX: Watch for dialog closing and FORCE unlock the screen
   useEffect(() => {
     if (!editingUser) {
-      document.body.style.pointerEvents = "";
-      document.body.style.overflow = "";
+      // Wait a tiny bit for animations to finish, then unlock
+      const timer = setTimeout(() => {
+        document.body.style.pointerEvents = "";
+        document.body.style.overflow = "";
+      }, 300);
+      return () => clearTimeout(timer);
     }
   }, [editingUser]);
 
@@ -107,17 +111,23 @@ export default function ManageUsersPage() {
 
   const handleSaveEdit = () => {
     if (!editingUser) return;
+
+    // 1. Update the list
     setUsers(users.map(u => u.uid === editingUser.uid ? editingUser : u));
-    toast({ title: "User Updated", description: `${editingUser.name}'s details have been saved.` });
     
-    // CRITICAL: Close the dialog firmly after a tick
-    setTimeout(() => {
-      setEditingUser(null);
-    }, 0);
+    // 2. Show non-blocking success message
+    toast({ title: "User Updated", description: `${editingUser.name}'s details have been saved.` });
+
+    // 3. CRITICAL: Close the dialog firmly
+    setEditingUser(null);
   };
   
   const handleResetPassword = (email: string) => {
-    alert(`Password reset link sent to ${email}`);
+    // Replaced blocking alert with non-blocking toast
+    toast({
+        title: "Password Reset",
+        description: `A password reset link has been sent to ${email}. (Mock)`
+    });
   };
 
 
