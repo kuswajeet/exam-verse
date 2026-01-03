@@ -110,7 +110,6 @@ export function UploadQuestionsClientPage() {
         const result = Papa.parse<any>(csvText, { header: true, skipEmptyLines: true });
 
         if (result.errors.length > 0) {
-            console.error("CSV Parsing errors:", result.errors);
             throw new Error(`Error parsing CSV: ${result.errors[0].message}`);
         }
 
@@ -188,7 +187,6 @@ export function UploadQuestionsClientPage() {
         });
 
     } catch (error) {
-        console.error(error);
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during parsing or saving.";
         setState({
             status: "error",

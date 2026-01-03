@@ -48,11 +48,15 @@ export function TestLinker() {
 
       await addDoc(collection(db, 'tests'), testData);
 
-      alert('Test Created Successfully! The page will now reload.');
-      window.location.reload();
+      toast({
+        title: "Test Linked!",
+        description: "A new test has been created. The page will reload.",
+        className: 'bg-green-100 dark:bg-green-900',
+      });
+      
+      setTimeout(() => window.location.reload(), 2000);
 
     } catch (error) {
-      console.error('Error linking test:', error);
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
       toast({
         variant: 'destructive',

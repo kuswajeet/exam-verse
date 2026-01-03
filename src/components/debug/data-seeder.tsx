@@ -55,7 +55,6 @@ export function DataSeeder() {
 
   const repairDatabase = async () => {
     setIsSeeding(true);
-    console.log("Step 1: Connecting...");
 
     try {
       if (!db) {
@@ -65,20 +64,13 @@ export function DataSeeder() {
       const questionsCollection = collection(db, 'questions');
       const testsCollection = collection(db, 'tests');
 
-      console.log("Step 2: Creating Questions sequentially...");
       const questionIds: string[] = [];
 
-      let count = 1;
       for (const qData of sampleQuestions) {
         const questionRef = await addDoc(questionsCollection, { ...qData, createdAt: serverTimestamp() });
-        console.log(`Saved Q${count}: ${questionRef.id}`);
         questionIds.push(questionRef.id);
-        count++;
       }
       
-      console.log(`Step 3: All questions saved. Captured IDs: ${questionIds.join(', ')}`);
-      
-      console.log("Step 4: Creating Test document...");
       const testData: Omit<Test, 'id'> = {
         title: 'General Science Repair Test',
         examName: 'General Science Repair Test',
@@ -98,20 +90,22 @@ export function DataSeeder() {
       };
       
       const testRef = await addDoc(testsCollection, testData);
-      console.log(`Step 5: Saved Test document with ID: ${testRef.id}`);
 
-      alert("Database repaired successfully! Refreshing page...");
-      window.location.reload();
+      toast({
+          title: "Database Repaired",
+          description: `Created ${questionIds.length} questions and 1 test (${testRef.id}). Page will reload.`,
+          className: "bg-green-100 dark:bg-green-900"
+      });
+
+      setTimeout(() => window.location.reload(), 2000);
 
     } catch (error) {
-      console.error('Error during sequential repair:', error);
       toast({
         variant: 'destructive',
         title: 'Repair Failed',
         description: error instanceof Error ? error.message : 'An unknown error occurred.',
       });
     } finally {
-      console.log("Step 6: Finalizing process...");
       setIsSeeding(false);
     }
   };

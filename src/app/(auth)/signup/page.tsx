@@ -73,7 +73,6 @@ export default function SignupPage() {
         msg = 'This email address is already in use by another account.';
       }
       setAuthError(msg);
-      console.error("SIGNUP ERROR:", error);
     }
   }
 

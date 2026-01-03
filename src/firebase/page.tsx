@@ -29,7 +29,7 @@ export default function TestsPage() {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Test));
         setTests(data);
       } catch (error) {
-        console.error("Error fetching tests:", error);
+        // Silently fail in production
       } finally {
         setLoading(false);
       }
@@ -68,11 +68,7 @@ export default function TestsPage() {
 
   const handlePurchase = (e: React.MouseEvent, examName: string) => {
     e.stopPropagation(); 
-    const confirmed = confirm(`Unlock ${examName} bundle for full access?`);
-    if (confirmed) {
-      setPurchasedBundles([...purchasedBundles, examName]);
-      alert("Purchase Successful! Tests Unlocked.");
-    }
+    setPurchasedBundles([...purchasedBundles, examName]);
   };
 
   const toggleExam = (examName: string) => {

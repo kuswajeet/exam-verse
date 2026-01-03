@@ -15,7 +15,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, addDoc, serverTimestamp, query, where, CollectionReference, DocumentData, Query } from 'firebase/firestore';
 import type { Question, Test } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, BookCheck } from 'lucide-react';
+import { Loader } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from '@/components/ui/table';
@@ -200,7 +200,6 @@ export function CreateTestClientPage() {
 
       router.push('/dashboard/tests');
     } catch (error) {
-      console.error('Error creating test:', error);
       toast({
         variant: 'destructive',
         title: 'Error Creating Test',

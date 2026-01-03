@@ -41,7 +41,6 @@ export default function SettingsPage() {
           setMobileNumber(data.mobileNumber || '');
         }
       }).catch(error => {
-        console.error("Error fetching user profile:", error);
         toast({
           variant: 'destructive',
           title: 'Error',
@@ -71,7 +70,6 @@ export default function SettingsPage() {
         className: 'bg-green-100 dark:bg-green-900',
       });
     } catch (error) {
-      console.error("Error updating profile:", error);
       toast({
         variant: 'destructive',
         title: 'Update Failed',
@@ -84,7 +82,10 @@ export default function SettingsPage() {
   
   const handleCancelSubscription = () => {
     // This is a mock action. In a real app, this would redirect to a Stripe/billing portal.
-    alert("Subscription management coming soon! For now, this is a mock action.");
+    toast({
+        title: 'Mock Action',
+        description: 'Subscription management coming soon!'
+    });
   };
 
   return (

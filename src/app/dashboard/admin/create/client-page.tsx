@@ -14,7 +14,6 @@ import { PlusCircle, Trash2, Loader, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Question, Test } from '@/lib/types';
 import { Switch } from '@/components/ui/switch';
 
 const questionSchema = z.object({
@@ -71,8 +70,6 @@ export function CreateTestManualClientPage() {
     
     // Simulate network delay
     setTimeout(() => {
-      console.log("Mock Test Data:", values);
-      alert(`Test Created (Mock): ${values.title} (Premium: ${values.isPremium ? 'Yes' : 'No'})`);
       
       toast({ 
         title: 'Success! (Mock)', 

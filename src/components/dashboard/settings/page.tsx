@@ -31,7 +31,7 @@ export default function SettingsPage() {
     const proStatus = localStorage.getItem('isPro') === 'true';
     setIsPro(proStatus);
 
-    if (user) {
+    if (user && firestore) {
       const userDocRef = doc(firestore, 'users', user.uid);
       getDoc(userDocRef).then(userSnap => {
         if (userSnap.exists()) {
@@ -39,8 +39,7 @@ export default function SettingsPage() {
           setName(data.name || '');
           setMobileNumber(data.mobileNumber || '');
         }
-      }).catch(error => {
-        console.error("Error fetching user profile:", error);
+      }).catch(() => {
         toast({
           variant: 'destructive',
           title: 'Error',
@@ -53,7 +52,7 @@ export default function SettingsPage() {
   // 2. Handle Save
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !firestore) return;
 
     setSaving(true);
     try {
@@ -70,7 +69,6 @@ export default function SettingsPage() {
         className: 'bg-green-100 dark:bg-green-900',
       });
     } catch (error) {
-      console.error("Error updating profile:", error);
       toast({
         variant: 'destructive',
         title: 'Update Failed',
@@ -82,7 +80,10 @@ export default function SettingsPage() {
   };
   
   const handleCancelSubscription = () => {
-    alert("Subscription management coming soon! For now, this is a mock action.");
+    toast({
+        title: "Mock Action",
+        description: "Subscription management coming soon!"
+    });
   };
 
   return (

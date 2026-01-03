@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,8 +78,6 @@ export default function ManageMaterialsPage() {
         };
 
         setMaterials(prev => [newMaterial, ...prev]);
-
-        alert("Material Added (Mock)");
         
         toast({
             title: 'Success! (Mock)',
@@ -93,7 +91,6 @@ export default function ManageMaterialsPage() {
   }
   
   async function handleDelete(id: string) {
-    alert("Material Deleted (Mock)");
     setMaterials(prev => prev.filter(m => m.id !== id));
     toast({
         title: 'Material Deleted (Mock)',

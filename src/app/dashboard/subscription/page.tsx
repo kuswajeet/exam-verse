@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Loader2, Star } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -28,7 +28,6 @@ export default function SubscriptionPage() {
         description: 'Welcome to the Pro Plan. All features are now unlocked.',
         className: 'bg-green-100 dark:bg-green-900',
       });
-      alert('Payment Successful! You are now a Pro Member.');
       setProcessingPlan(null);
     }, 2000);
   };

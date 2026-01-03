@@ -43,7 +43,6 @@ export default function TestPage({ params: paramsPromise }: { params: Promise<{ 
             toast({ variant: 'destructive', title: 'Error', description: 'Mock test not found.' });
         }
       } catch (error) {
-        console.error('Error fetching mock test:', error);
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to load the mock test.' });
       } finally {
         setIsLoading(false);
@@ -67,6 +66,7 @@ export default function TestPage({ params: paramsPromise }: { params: Promise<{ 
     }
 
     return () => clearInterval(timerId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, isLoading, isSubmitting]);
 
   const handleAnswerChange = (questionId: string, optionIndex: number) => {
@@ -276,5 +276,3 @@ export default function TestPage({ params: paramsPromise }: { params: Promise<{ 
     </div>
   );
 }
-
-    

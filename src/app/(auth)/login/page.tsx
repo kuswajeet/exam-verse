@@ -47,19 +47,15 @@ export default function LoginPage() {
     setLoading(true);
     setAuthError(null);
     try {
-      // Debug: Check if auth is loaded
       if (!auth) {
         throw new Error("Firebase Auth is not initialized. Please refresh the page.");
       }
       
-      console.log("Auth Object:", auth); // Debug log
-
       await signInWithEmailAndPassword(auth, values.email, values.password);
       
       // Redirect on success
       router.push('/dashboard');
     } catch (error: any) {
-      console.error("Login Error:", error);
       let msg = "Failed to sign in.";
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-api-key') {
         msg = "Invalid email, password, or API Key. Please check your credentials and Firebase config.";

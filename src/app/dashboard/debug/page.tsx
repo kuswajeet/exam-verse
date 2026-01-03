@@ -74,7 +74,6 @@ export default function DebugPage() {
         loadTime: endTime - startTime,
         errorMessage: error.message || 'An unknown error occurred.',
       });
-      console.error("Diagnostic Error:", error);
     } finally {
       setIsLoading(false);
     }
