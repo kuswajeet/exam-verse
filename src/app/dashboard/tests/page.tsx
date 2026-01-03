@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { collection, query, getDocs, where } from 'firebase/firestore';
+import { useState, useEffect, useMemo } from 'react';
+import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '@/firebase/client';
-import { Loader2, Lock, Unlock, ChevronDown, PlayCircle, ShoppingCart } from 'lucide-react';
+import { Loader2, Lock, PlayCircle, ShoppingCart, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ export default function TestsPage() {
         const q = query(collection(db, 'tests')); // Fetch ALL tests
         const snapshot = await getDocs(q);
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Test));
+        console.log("Fetched Tests:", data); // DETAILED LOGGING
         setTests(data);
       } catch (error) {
         console.error("Error fetching tests:", error);
@@ -41,11 +42,10 @@ export default function TestsPage() {
     fetchTests();
   }, []);
 
-  // 2. Grouping Logic (The Brains)
-  const groupedData = tests.reduce((acc, test) => {
-    // Fallbacks for old data
+  // 2. Grouping Logic
+  const groupedData = useMemo(() => tests.reduce((acc, test) => {
     const category = test.category || "General";
-    const examName = test.examName || "General Practice";
+    const examName = test.examName || test.title || "General Practice";
     const subType = test.testSubType || "topic"; 
 
     if (!acc[category]) acc[category] = {};
@@ -56,13 +56,12 @@ export default function TestsPage() {
       };
     }
 
-    // Sort into sub-types
     if (subType === 'full') acc[category][examName].tests.full.push(test);
     else if (subType === 'subject') acc[category][examName].tests.subject.push(test);
-    else acc[category][examName].tests.topic.push(test); // Default to topic
+    else acc[category][examName].tests.topic.push(test);
 
     return acc;
-  }, {} as Record<string, Record<string, any>>);
+  }, {} as Record<string, Record<string, any>>), [tests]);
 
   const categories = Object.keys(groupedData);
   const defaultTab = categories.length > 0 ? categories[0] : 'General';
@@ -87,9 +86,9 @@ export default function TestsPage() {
         <p className="text-gray-500">Select an exam bundle to view full mock tests, subject tests, and topic practice.</p>
       </div>
 
-      {categories.length === 0 ? (
+      {tests.length === 0 ? (
         <div className="text-center p-12 border rounded-lg bg-gray-50">
-          <p>No tests available right now. Click the "Inject Data" button above to add a sample test.</p>
+          <p className="mb-4">No tests found in the database. Use the developer tool above to generate a sample test.</p>
         </div>
       ) : (
         <Tabs defaultValue={defaultTab} className="w-full">
@@ -103,7 +102,10 @@ export default function TestsPage() {
             <TabsContent key={category} value={category} className="space-y-6">
               {Object.entries(groupedData[category] || {}).map(([examName, bundle]: [string, any]) => {
                 const isUnlocked = bundle.price === 0 || purchasedBundles.includes(examName);
-                const totalTests = (bundle.tests.full?.length || 0) + (bundle.tests.subject?.length || 0) + (bundle.tests.topic?.length || 0);
+                const fullTests = bundle.tests.full || [];
+                const subjectTests = bundle.tests.subject || [];
+                const topicTests = bundle.tests.topic || [];
+                const totalTests = fullTests.length + subjectTests.length + topicTests.length;
 
                 return (
                   <Collapsible key={examName} className="border rounded-lg bg-card shadow-sm">
@@ -137,14 +139,14 @@ export default function TestsPage() {
                     </CollapsibleTrigger>
                     <CollapsibleContent className="border-t">
                       <div className="p-4 space-y-4 bg-muted/50">
-                        {bundle.tests.full.length > 0 && (
-                          <TestSection title="🏆 Full Mock Tests" tests={bundle.tests.full} isUnlocked={isUnlocked} router={router} />
+                        {fullTests.length > 0 && (
+                          <TestSection title="🏆 Full Mock Tests" tests={fullTests} isUnlocked={isUnlocked} router={router} />
                         )}
-                        {bundle.tests.subject.length > 0 && (
-                          <TestSection title="📚 Subject Wise Tests" tests={bundle.tests.subject} isUnlocked={isUnlocked} router={router} />
+                        {subjectTests.length > 0 && (
+                          <TestSection title="📚 Subject Wise Tests" tests={subjectTests} isUnlocked={isUnlocked} router={router} />
                         )}
-                        {bundle.tests.topic.length > 0 && (
-                          <TestSection title="📝 Topic Wise Practice" tests={bundle.tests.topic} isUnlocked={isUnlocked} router={router} />
+                        {topicTests.length > 0 && (
+                          <TestSection title="📝 Topic Wise Practice" tests={topicTests} isUnlocked={isUnlocked} router={router} />
                         )}
                         {totalTests === 0 && <p className="text-muted-foreground italic text-center py-4">No tests added to this bundle yet.</p>}
                       </div>
@@ -161,32 +163,41 @@ export default function TestsPage() {
 }
 
 // Helper Component for the Lists
-function TestSection({ title, tests, isUnlocked, router }: any) {
+function TestSection({ title, tests, isUnlocked, router }: { title: string; tests: Test[], isUnlocked: boolean; router: any }) {
   return (
     <div className="border rounded-md overflow-hidden bg-card">
       <div className="bg-secondary px-4 py-2 font-semibold border-b text-secondary-foreground text-sm">{title}</div>
       <div className="divide-y">
-        {tests.map((test: any) => (
-          <div key={test.id} className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
-            <div>
-              <p className="font-medium">{test.title || 'Untitled Exam'}</p>
-              <div className="flex gap-4 text-xs text-muted-foreground mt-1">
-                <span>{test.questionCount || test.questionIds?.length || 0} Questions</span>
-                <span>{test.durationMinutes} mins</span>
+        {tests.map((test: Test) => {
+            // ROBUST DATA MAPPING
+            const testTitle = test.examName || test.title || "Untitled Test";
+            const duration = test.durationMinutes || (test as any).duration || 60;
+            const questionCount = test.questionIds?.length || (test as any).questions?.length || 0;
+
+            return (
+              <div key={test.id} className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+                <div>
+                  <p className="font-medium">{testTitle}</p>
+                  <div className="flex gap-4 text-xs text-muted-foreground mt-1">
+                    <span>{questionCount} Questions</span>
+                    <span>{duration} mins</span>
+                  </div>
+                </div>
+                
+                <Button 
+                  size="sm" 
+                  disabled={!isUnlocked} 
+                  onClick={() => router.push(`/dashboard/tests/${test.id}`)}
+                  className={isUnlocked ? "bg-primary hover:bg-primary/90" : ""}
+                >
+                  {isUnlocked ? <><PlayCircle size={16} className="mr-2"/> Start</> : <><Lock size={16} className="mr-2"/> Locked</>}
+                </Button>
               </div>
-            </div>
-            
-            <Button 
-              size="sm" 
-              disabled={!isUnlocked} 
-              onClick={() => router.push(`/dashboard/tests/${test.id}`)}
-              className={isUnlocked ? "bg-primary hover:bg-primary/90" : ""}
-            >
-              {isUnlocked ? <><PlayCircle size={16} className="mr-2"/> Start</> : <><Lock size={16} className="mr-2"/> Locked</>}
-            </Button>
-          </div>
-        ))}
+            )
+        })}
       </div>
     </div>
   );
 }
+
+    
