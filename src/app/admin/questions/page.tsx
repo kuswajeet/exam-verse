@@ -6,10 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy, writeBatch, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import type { Question } from '@/lib/types';
 import { Loader, PlusCircle, Trash2, Zap, Search, X, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -18,9 +14,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import type { Question } from '@/lib/types';
 
-const sampleOneLiners = [
+
+// --- MOCK DATA ---
+const sampleOneLiners: Question[] = [
   {
+    id: 'sample-ol-1',
     questionText: 'What is the powerhouse of the cell?',
     options: ['Mitochondria'],
     correctAnswerIndex: 0,
@@ -33,6 +33,7 @@ const sampleOneLiners = [
     questionType: 'one_liner',
   },
   {
+    id: 'sample-ol-2',
     questionText: 'What force keeps planets in orbit around the sun?',
     options: ['Gravity'],
     correctAnswerIndex: 0,
@@ -44,22 +45,11 @@ const sampleOneLiners = [
     difficulty: 'easy',
     questionType: 'one_liner',
   },
-    {
-    questionText: 'What is the main component of natural gas?',
-    options: ['Methane'],
-    correctAnswerIndex: 0,
-    explanation: 'Methane (CH4) is the primary component of natural gas, making up 70-90% of its composition.',
-    category: 'Engineering',
-    examName: 'JEE Main',
-    subject: 'Chemistry',
-    topic: 'Hydrocarbons',
-    difficulty: 'medium',
-    questionType: 'one_liner',
-  },
 ];
 
-const sampleMultipleChoice = [
+const sampleMultipleChoice: Question[] = [
   {
+    id: 'sample-mcq-1',
     questionText: 'Which planet is closest to the Sun?',
     options: ['Venus', 'Mercury', 'Mars', 'Earth'],
     correctAnswerIndex: 1,
@@ -72,6 +62,7 @@ const sampleMultipleChoice = [
     questionType: 'single_choice',
   },
   {
+    id: 'sample-mcq-2',
     questionText: 'What is the largest organ in the human body?',
     options: ['Liver', 'Brain', 'Skin', 'Heart'],
     correctAnswerIndex: 2,
@@ -84,30 +75,30 @@ const sampleMultipleChoice = [
     questionType: 'single_choice',
   },
 ];
-
+// --- END MOCK DATA ---
 
 export default function ManageQuestionsPage() {
-  const firestore = useFirestore();
   const { toast } = useToast();
   
   // State
-  const [isSeeding, setIsSeeding] = useState(false);
+  const [allQuestions, setAllQuestions] = useState<Question[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({ topic: 'all', difficulty: 'all', type: 'all' });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Data fetching
-  const questionsQuery = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'questions'), orderBy('topic', 'asc')) : null, 
-    [firestore]
-  );
-  const { data: allQuestions, isLoading, error } = useCollection<Question>(questionsQuery);
+  // Data fetching simulation
+  useEffect(() => {
+    setIsLoading(true);
+    // Start with an empty list and let the user seed it.
+    setAllQuestions([]); 
+    setIsLoading(false);
+  }, []);
 
   // Memoized lists for filters and display
   const { topics, difficulties, types } = useMemo(() => {
-    if (!allQuestions) return { topics: [], difficulties: [], types: [] };
     const topicSet = new Set<string>();
     const difficultySet = new Set<string>();
     const typeSet = new Set<string>();
@@ -124,7 +115,6 @@ export default function ManageQuestionsPage() {
   }, [allQuestions]);
 
   const filteredQuestions = useMemo(() => {
-    if (!allQuestions) return [];
     return allQuestions.filter(q => 
       (q.questionText.toLowerCase().includes(searchTerm.toLowerCase())) &&
       (filters.topic === 'all' || q.topic === filters.topic) &&
@@ -162,30 +152,14 @@ export default function ManageQuestionsPage() {
   };
   
   const handleDeleteSelected = async () => {
-    if (!firestore || selectedIds.size === 0) return;
-    try {
-      const batch = writeBatch(firestore);
-      selectedIds.forEach(id => {
-        batch.delete(doc(firestore, 'questions', id));
-      });
-      await batch.commit();
-      toast({ title: "Success", description: `${selectedIds.size} questions deleted.` });
-      setSelectedIds(new Set());
-    } catch (e) {
-      console.error(e);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete questions.' });
-    }
+    setAllQuestions(prev => prev.filter(q => !selectedIds.has(q.id)));
+    toast({ title: "Success", description: `${selectedIds.size} questions deleted.` });
+    setSelectedIds(new Set());
   };
 
   const handleDeleteRow = async (id: string) => {
-     if (!firestore) return;
-     try {
-        await deleteDoc(doc(firestore, 'questions', id));
-        toast({ title: "Success", description: `Question deleted.` });
-     } catch (e) {
-        console.error(e);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete question.' });
-     }
+    setAllQuestions(prev => prev.filter(q => q.id !== id));
+    toast({ title: "Success", description: `Question deleted.` });
   };
 
   const handleEditClick = (question: Question) => {
@@ -194,50 +168,25 @@ export default function ManageQuestionsPage() {
   };
 
   const handleSaveEdit = async () => {
-    if (!firestore || !editingQuestion) return;
-    try {
-        const { id, ...dataToUpdate } = editingQuestion;
-        await updateDoc(doc(firestore, 'questions', id), dataToUpdate);
-        toast({ title: 'Success', description: 'Question updated successfully.' });
-        setIsModalOpen(false);
-        setEditingQuestion(null);
-    } catch (e) {
-        console.error(e);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update question.' });
-    }
+    if (!editingQuestion) return;
+    setAllQuestions(prev => prev.map(q => q.id === editingQuestion.id ? editingQuestion : q));
+    toast({ title: 'Success', description: 'Question updated successfully.' });
+    setIsModalOpen(false);
+    setEditingQuestion(null);
   };
 
   const handleSeedData = async () => {
-    if (!firestore) return;
-    setIsSeeding(true);
-
-    try {
-      const batch = writeBatch(firestore);
-      const questionsRef = collection(firestore, 'questions');
-      const allSamples = [...sampleOneLiners, ...sampleMultipleChoice];
-
-      allSamples.forEach((q) => {
-        const docRef = doc(questionsRef);
-        batch.set(docRef, { ...q, id: docRef.id });
-      });
-
-      await batch.commit();
-
-      toast({
+    const allSamples = [...sampleOneLiners, ...sampleMultipleChoice];
+    setAllQuestions(prev => {
+        const existingIds = new Set(prev.map(q => q.id));
+        const newQuestions = allSamples.filter(s => !existingIds.has(s.id));
+        return [...prev, ...newQuestions];
+    });
+    toast({
         title: 'Success!',
         description: `${allSamples.length} sample questions have been added.`,
         className: 'bg-green-100 dark:bg-green-900',
-      });
-    } catch (e) {
-      console.error(e);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to seed sample data.',
-      });
-    } finally {
-      setIsSeeding(false);
-    }
+    });
   };
 
   return (
@@ -254,8 +203,8 @@ export default function ManageQuestionsPage() {
                         <Trash2 className="mr-2 h-4 w-4" /> Delete Selected ({selectedIds.size})
                     </Button>
                 )}
-                 <Button onClick={handleSeedData} disabled={isSeeding}>
-                  {isSeeding ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                 <Button onClick={handleSeedData}>
+                  <Zap className="mr-2 h-4 w-4" />
                   Add Sample Data
                 </Button>
             </div>
@@ -288,10 +237,8 @@ export default function ManageQuestionsPage() {
           <TableBody>
             {isLoading ? (
               <TableRow><TableCell colSpan={6} className="text-center h-24">Loading questions...</TableCell></TableRow>
-            ) : error ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-red-500 h-24">Error loading questions.</TableCell></TableRow>
             ) : filteredQuestions.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center h-24">No questions found.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center h-24">No questions found. Try adding sample data.</TableCell></TableRow>
             ) : (
               filteredQuestions.map(question => (
                 <TableRow key={question.id} data-state={selectedIds.has(question.id) ? 'selected' : ''}>
@@ -396,3 +343,5 @@ export default function ManageQuestionsPage() {
     </Card>
   );
 }
+
+    
