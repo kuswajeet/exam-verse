@@ -110,19 +110,24 @@ export default function TestsPage() {
 
                 return (
                   <Collapsible key={examName} className="border rounded-lg bg-card shadow-sm">
-                    <CollapsibleTrigger className="flex w-full items-center justify-between p-4 hover:bg-muted/50 rounded-t-lg">
-                       <div className="text-left space-y-1">
-                          <div className="flex items-center gap-3">
-                            <h3 className="text-xl font-bold">{examName}</h3>
-                            {bundle.price > 0 && !isUnlocked && (
-                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                                <Lock size={12} className="mr-1"/> Locked
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground font-normal">{totalTests} Tests Included</p>
+                    <div className="flex w-full items-center justify-between p-4 rounded-t-lg">
+                      <CollapsibleTrigger asChild>
+                         <div className="flex-grow flex items-center gap-4 cursor-pointer">
+                            <div className="text-left space-y-1">
+                                <div className="flex items-center gap-3">
+                                    <h3 className="text-xl font-bold">{examName}</h3>
+                                    {bundle.price > 0 && !isUnlocked && (
+                                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                        <Lock size={12} className="mr-1"/> Locked
+                                    </Badge>
+                                    )}
+                                </div>
+                                <p className="text-sm text-muted-foreground font-normal">{totalTests} Tests Included</p>
+                            </div>
+                            <ChevronDown className="h-5 w-5 transition-transform data-[state=open]:rotate-180" />
                         </div>
-                        <div className="flex items-center gap-4">
+                      </CollapsibleTrigger>
+                      <div className="flex items-center gap-4 ml-4">
                            {!isUnlocked && bundle.price > 0 && (
                             <Button 
                               size="sm" 
@@ -135,9 +140,8 @@ export default function TestsPage() {
                           {isUnlocked && (
                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">Purchased</Badge>
                           )}
-                          <ChevronDown className="h-5 w-5 transition-transform data-[state=open]:rotate-180" />
                         </div>
-                    </CollapsibleTrigger>
+                    </div>
                     <CollapsibleContent className="border-t">
                       <div className="p-4 space-y-4 bg-muted/50">
                         {fullTests.length > 0 && (
@@ -200,5 +204,3 @@ function TestSection({ title, tests, isUnlocked, router }: { title: string; test
     </div>
   );
 }
-
-    
