@@ -9,7 +9,7 @@ import { Loader2, Terminal } from "lucide-react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 
 // CRITICAL FIX: Import 'auth' from the correct client file
-import { auth } from "@/firebase/client";
+import { auth } from "@/firebase/config";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
