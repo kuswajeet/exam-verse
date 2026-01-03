@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import type { Question } from '@/lib/types';
@@ -162,7 +162,19 @@ export default function ManageQuestionsPage() {
   const [filters, setFilters] = useState({ topic: 'all', difficulty: 'all', type: 'all' });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // NUCLEAR FIX: Watch for dialog closing and FORCE unlock the screen
+  useEffect(() => {
+    if (!editingQuestion) {
+      // Wait a tiny bit for animations to finish, then unlock
+      const timer = setTimeout(() => {
+        document.body.style.pointerEvents = "";
+        document.body.style.overflow = "";
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [editingQuestion]);
+
 
   // Memoized lists for filters and display
   const { topics, difficulties, types } = useMemo(() => {
@@ -231,16 +243,15 @@ export default function ManageQuestionsPage() {
 
   const handleEditClick = (question: Question) => {
     setEditingQuestion({ ...question });
-    setIsModalOpen(true);
   };
 
   const handleSaveEdit = () => {
     if (!editingQuestion) return;
-    alert("Edit feature coming soon!");
-    // This is where you would update the local state:
-    // setAllQuestions(prev => prev.map(q => q.id === editingQuestion.id ? editingQuestion : q));
-    // toast({ title: 'Success', description: 'Question updated successfully. (Mock)' });
-    setIsModalOpen(false);
+    
+    setAllQuestions(prev => prev.map(q => q.id === editingQuestion.id ? editingQuestion : q));
+    toast({ title: 'Success', description: 'Question updated successfully. (Mock)' });
+    
+    // CRITICAL: Close the dialog
     setEditingQuestion(null);
   };
 
@@ -312,7 +323,7 @@ export default function ManageQuestionsPage() {
                   <TableCell>{question.topic}</TableCell>
                   <TableCell><Badge variant={question.difficulty === 'hard' ? 'destructive' : 'secondary'}>{question.difficulty}</Badge></TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => alert('Edit feature coming soon!')}><Pencil className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(question)}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => handleDeleteRow(question.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                   </TableCell>
                 </TableRow>
@@ -322,7 +333,7 @@ export default function ManageQuestionsPage() {
         </Table>
       </CardContent>
       
-       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+       <Dialog open={!!editingQuestion} onOpenChange={(isOpen) => { if (!isOpen) setEditingQuestion(null); }}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Question</DialogTitle>
@@ -407,5 +418,3 @@ export default function ManageQuestionsPage() {
     </Card>
   );
 }
-
-    
