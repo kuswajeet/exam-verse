@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -168,7 +169,7 @@ function TestSection({ title, tests, isUnlocked, router }: any) {
         {tests.map((test: any) => (
           <div key={test.id} className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
             <div>
-              <p className="font-medium">{test.title}</p>
+              <p className="font-medium">{test.title || 'Untitled Exam'}</p>
               <div className="flex gap-4 text-xs text-muted-foreground mt-1">
                 <span>{test.questionCount || test.questionIds?.length || 0} Questions</span>
                 <span>{test.durationMinutes} mins</span>
