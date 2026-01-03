@@ -1,10 +1,8 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, limit } from 'firebase/firestore';
+import { useState, useMemo, useEffect } from 'react';
+import { getMockOneLiners } from '@/lib/mock-data';
 import type { Question } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,26 +13,25 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function OneLinersPage() {
-  const firestore = useFirestore();
-
+  const [allQuestions, setAllQuestions] = useState<Question[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
   const [filters, setFilters] = useState({
     subject: 'all',
     topic: 'all',
     difficulty: 'all',
   });
 
-  const oneLinersQuery = useMemoFirebase(() => 
-    firestore 
-      ? query(
-          collection(firestore, 'questions'), 
-          where('questionType', '==', 'one_liner'),
-          limit(100) // Fetch a larger batch for client-side filtering
-        )
-      : null, 
-    [firestore]
-  );
-  
-  const { data: allQuestions, isLoading } = useCollection<Question>(oneLinersQuery);
+  useEffect(() => {
+    async function loadData() {
+        setIsLoading(true);
+        const data = await getMockOneLiners();
+        setAllQuestions(data);
+        setIsLoading(false);
+    }
+    loadData();
+  }, []);
+
 
   const { uniqueSubjects, uniqueTopics, uniqueDifficulties } = useMemo(() => {
     if (!allQuestions) return { uniqueSubjects: [], uniqueTopics: [], uniqueDifficulties: [] };
@@ -76,7 +73,7 @@ export default function OneLinersPage() {
             <CardHeader>
                 <CardTitle>No "One-Liner" Questions Found</CardTitle>
                 <CardDescription>
-                    We couldn't find any questions marked as 'one_liner'. Admins can add some in the question management section.
+                    We couldn't find any questions marked as 'one_liner' in the mock data file.
                 </CardDescription>
             </CardHeader>
         </Card>

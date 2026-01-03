@@ -65,6 +65,7 @@ export function DashboardSidebar() {
         { name: 'AI Generator', href: '/admin/generate-question', icon: Sparkles },
         { name: 'Bulk Upload', href: '/admin/upload-questions', icon: UploadCloud },
         { name: 'Manage Materials', href: '/admin/materials', icon: Library },
+        { name: 'Debug', href: '/dashboard/debug', icon: '🐞' }
       ]
     }
   ];
@@ -90,6 +91,7 @@ export function DashboardSidebar() {
               <div className="space-y-1">
                 {group.items.map((item) => {
                   const isActive = pathname === item.href;
+                  const Icon = item.icon;
                   return (
                     <Link
                       key={item.href}
@@ -101,7 +103,7 @@ export function DashboardSidebar() {
                           : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                       )}
                     >
-                      <item.icon className="h-4 w-4" />
+                      {typeof Icon === 'string' ? <span>{Icon}</span> : <Icon className="h-4 w-4" />}
                       {item.name}
                     </Link>
                   );
