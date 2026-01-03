@@ -32,19 +32,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { User } from "@/lib/types";
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { Trash2, Search, User as UserIcon } from "lucide-react";
 
 // --- MOCK DATA ---
 const MOCK_USERS: User[] = [
-    { uid: 'user_1', name: 'Satoshi N.', email: 'satoshi@example.com', role: 'student', createdAt: new Date('2024-07-01').toISOString() },
-    { uid: 'user_2', name: 'Vitalik B.', email: 'vitalik@example.com', role: 'admin', createdAt: new Date('2024-06-25').toISOString() },
-    { uid: 'user_3', name: 'Ada Lovelace', email: 'ada@example.com', role: 'student', createdAt: new Date('2024-06-20').toISOString() },
-    { uid: 'user_4', name: 'Grace Hopper', email: 'grace@example.com', role: 'student', createdAt: new Date('2024-06-15').toISOString() },
-    { uid: 'user_5', name: 'Alan Turing', email: 'alan@example.com', role: 'student', createdAt: new Date('2024-06-10').toISOString() },
-    { uid: 'user_6', name: 'Margaret H.', email: 'margaret@example.com', role: 'admin', createdAt: new Date('2024-06-05').toISOString() },
-    { uid: 'user_7', name: 'Linus T.', email: 'linus@example.com', role: 'student', createdAt: new Date('2024-06-01').toISOString() },
-    { uid: 'user_8', name: 'John Carmack', email: 'john@example.com', role: 'student', createdAt: new Date('2024-05-25').toISOString() },
+    { uid: 'user_1', name: 'Satoshi N.', email: 'satoshi@example.com', role: 'student', createdAt: subDays(new Date(), 1).toISOString() },
+    { uid: 'user_2', name: 'Vitalik B.', email: 'vitalik@example.com', role: 'admin', createdAt: subDays(new Date(), 5).toISOString() },
+    { uid: 'user_3', name: 'Ada Lovelace', email: 'ada@example.com', role: 'student', createdAt: subDays(new Date(), 10).toISOString() },
+    { uid: 'user_4', name: 'Grace Hopper', email: 'grace@example.com', role: 'student', createdAt: subDays(new Date(), 15).toISOString() },
+    { uid: 'user_5', name: 'Alan Turing', email: 'alan@example.com', role: 'student', createdAt: subDays(new Date(), 20).toISOString() },
+    { uid: 'user_6', name: 'Margaret H.', email: 'margaret@example.com', role: 'admin', createdAt: subDays(new Date(), 25).toISOString() },
+    { uid: 'user_7', name: 'Linus T.', email: 'linus@example.com', role: 'student', createdAt: subDays(new Date(), 30).toISOString() },
+    { uid: 'user_8', name: 'John Carmack', email: 'john@example.com', role: 'student', createdAt: subDays(new Date(), 35).toISOString() },
 ];
 
 
@@ -62,9 +62,9 @@ export default function ManageUsersPage() {
     alert(`(Mock) Deleted user: ${userName}`);
   };
 
-  const getJoinedDate = (user: User) => {
-    if (typeof (user as any).createdAt === 'string') {
-      return format(new Date((user as any).createdAt), 'PP');
+  const getJoinedDate = (user: User & { createdAt?: string }) => {
+    if (user.createdAt) {
+      return format(new Date(user.createdAt), 'PP');
     }
     return 'N/A';
   }
@@ -108,7 +108,7 @@ export default function ManageUsersPage() {
                       {user.role}
                     </Badge>
                   </TableCell>
-                   <TableCell>{getJoinedDate(user)}</TableCell>
+                   <TableCell>{getJoinedDate(user as User & { createdAt?: string })}</TableCell>
                   <TableCell className="text-right">
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
