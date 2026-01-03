@@ -11,28 +11,33 @@ import {
   CardTitle,
   CardFooter
 } from "@/components/ui/card";
-import { useFirestore, useMemoFirebase } from "@/firebase/provider";
-import { useCollection } from "@/firebase/firestore/use-collection";
-import type { Test } from "@/lib/types";
-import { collection, query, where } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Lock, FileQuestion, Clock, CheckCircle } from "lucide-react";
 import { filterOptions, getExamsForCategory, getSubjectsForExam } from "@/lib/filter-options";
+import { getMockTests } from "@/lib/mock-data";
+import type { TestWithQuestions } from "@/lib/types";
 
 export default function QuizzesPage() {
-  const firestore = useFirestore();
-
+  const [allQuizzes, setAllQuizzes] = useState<TestWithQuestions[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedExam, setSelectedExam] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
 
-  const quizzesQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, "tests"), where("testType", "==", "quiz")) : null),
-    [firestore]
-  );
-  const { data: quizzes, isLoading: isLoadingQuizzes } = useCollection<Test>(quizzesQuery);
+  useEffect(() => {
+    async function loadData() {
+      setIsLoading(true);
+      const allTests = await getMockTests();
+      // Filter for tests that are marked as quizzes
+      const quizzesData = allTests.filter(test => test.testType === 'quiz');
+      setAllQuizzes(quizzesData);
+      setIsLoading(false);
+    }
+    loadData();
+  }, []);
 
   const handleCategoryChange = (value: string) => {
     setSelectedCategory(value);
@@ -46,19 +51,17 @@ export default function QuizzesPage() {
   };
   
   const filteredQuizzes = useMemo(() => {
-    if (!quizzes) return [];
-    return quizzes.filter(quiz => {
+    if (!allQuizzes) return [];
+    return allQuizzes.filter(quiz => {
       const categoryMatch = !selectedCategory || quiz.category === selectedCategory;
       const examMatch = !selectedExam || quiz.examName === selectedExam;
       const subjectMatch = !selectedSubject || quiz.subject === selectedSubject;
       return categoryMatch && examMatch && subjectMatch;
     });
-  }, [quizzes, selectedCategory, selectedExam, selectedSubject]);
+  }, [allQuizzes, selectedCategory, selectedExam, selectedSubject]);
 
   const examsForCategory = useMemo(() => getExamsForCategory(selectedCategory), [selectedCategory]);
   const subjectsForExam = useMemo(() => getSubjectsForExam(selectedCategory, selectedExam), [selectedCategory, selectedExam]);
-
-  const isLoading = isLoadingQuizzes;
 
   return (
     <div className="space-y-6">
