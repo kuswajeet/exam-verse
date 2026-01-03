@@ -1,88 +1,82 @@
 'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { CheckCircle2, XCircle, AlertCircle, HelpCircle } from "lucide-react";
+import { CheckCircle2, XCircle, HelpCircle, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider";
-import { useDoc } from "@/firebase/firestore/use-doc";
-import { doc, collection, query, where, getDocs, getDoc } from "firebase/firestore";
-import type { TestAttempt, Question, TestWithQuestions, Test } from "@/lib/types";
-import { Skeleton } from "@/components/ui/skeleton";
+import type { TestAttempt, Question, TestWithQuestions } from "@/lib/types";
+import { getMockTestById } from "@/lib/mock-data";
 import { format } from "date-fns";
-import React from "react";
 
-async function getTestWithQuestions(firestore: any, testId: string): Promise<TestWithQuestions | null> {
-    const testRef = doc(firestore, 'tests', testId);
-    const testSnapshot = await getDoc(testRef);
-    
-    if (!testSnapshot.exists()) {
-        return null;
+// The same hardcoded attempts from the results list page, to act as a fallback DB
+const MOCK_PAST_ATTEMPTS: TestAttempt[] = [
+    {
+        id: 'mock-attempt-1',
+        userId: 'mock-user-1',
+        testId: 'test-hist',
+        testTitle: 'History Special',
+        answers: { 'hist-q1': 1, 'hist-q2': 2, 'hist-q3': 0, 'hist-q4': 2, 'hist-q5': 1 },
+        score: 3,
+        totalQuestions: 5,
+        accuracy: 60.0,
+        completedAt: { seconds: Math.floor(new Date('2024-05-10T10:00:00Z').getTime() / 1000), nanoseconds: 0 } as any,
+    },
+    {
+        id: 'mock-attempt-2',
+        userId: 'mock-user-1',
+        testId: 'test-math',
+        testTitle: 'Math Basics',
+        answers: { 'math-q1': 1, 'math-q2': 2, 'math-q3': 1, 'math-q4': 2, 'math-q5': 2 },
+        score: 5,
+        totalQuestions: 5,
+        accuracy: 100.0,
+        completedAt: { seconds: Math.floor(new Date('2024-05-15T11:30:00Z').getTime() / 1000), nanoseconds: 0 } as any,
     }
+];
 
-    const testData = { id: testSnapshot.id, ...testSnapshot.data() } as Test;
-    
-    if (!testData.questionIds || testData.questionIds.length === 0) {
-        return { ...testData, questions: [] };
+// Helper to find the attempt data from localStorage or mock array
+async function getMockAttemptById(id: string): Promise<TestAttempt | undefined> {
+    const latestResultString = localStorage.getItem('latestTestResult');
+    if (latestResultString) {
+        const latestResult = JSON.parse(latestResultString);
+        if (latestResult.id === id) {
+             // Ensure the date is in a consistent format
+            latestResult.completedAt = { seconds: Math.floor(new Date(latestResult.completedAt).getTime() / 1000), nanoseconds: 0 };
+            return latestResult;
+        }
     }
-    
-    // Firestore 'in' queries are limited to 30 elements. 
-    // We need to chunk the requests if there are more.
-    const questionChunks: string[][] = [];
-    for (let i = 0; i < testData.questionIds.length; i += 30) {
-        questionChunks.push(testData.questionIds.slice(i, i + 30));
-    }
-    
-    const questionPromises = questionChunks.map(chunk => 
-        getDocs(query(collection(firestore, 'questions'), where('__name__', 'in', chunk)))
-    );
-
-    const questionSnapshots = await Promise.all(questionPromises);
-
-    const questionsMap = new Map<string, Question>();
-    questionSnapshots.forEach(snapshot => {
-        snapshot.docs.forEach(doc => {
-            questionsMap.set(doc.id, { id: doc.id, ...doc.data() } as Question);
-        });
-    });
-
-    // This ensures question order is preserved from the test document
-    const questions = testData.questionIds.map(id => questionsMap.get(id)).filter((q): q is Question => !!q);
-    
-    return { ...testData, questions };
+    return MOCK_PAST_ATTEMPTS.find(attempt => attempt.id === id);
 }
 
-export default function ResultDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
-  const { user } = useUser();
-  const firestore = useFirestore();
-  const [test, setTest] = useState<TestWithQuestions | null>(null);
-  const [isLoadingTest, setIsLoadingTest] = useState(true);
 
-  const resultDocRef = useMemoFirebase(
-    () => (firestore ? doc(firestore, `results`, id) : null),
-    [firestore, id]
-  );
+export default function ResultDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(paramsPromise);
   
-  const { data: attempt, isLoading: isLoadingAttempt } = useDoc<TestAttempt>(resultDocRef);
+  const [attempt, setAttempt] = useState<TestAttempt | null>(null);
+  const [test, setTest] = useState<TestWithQuestions | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!firestore || !attempt?.testId) return;
+    if (!id) return;
     
-    const fetchTest = async () => {
-        setIsLoadingTest(true);
-        const testWithQuestions = await getTestWithQuestions(firestore, attempt.testId);
-        setTest(testWithQuestions);
-        setIsLoadingTest(false);
+    async function fetchData() {
+        setIsLoading(true);
+        const attemptData = await getMockAttemptById(id);
+        if (attemptData) {
+            setAttempt(attemptData);
+            const testData = await getMockTestById(attemptData.testId);
+            setTest(testData || null);
+        }
+        setIsLoading(false);
     }
-    fetchTest();
+    fetchData();
 
-  }, [firestore, attempt?.testId]);
+  }, [id]);
 
-  if (isLoadingAttempt || (attempt && isLoadingTest)) {
+  if (isLoading) {
     return (
         <div className="space-y-6">
             <Card>
