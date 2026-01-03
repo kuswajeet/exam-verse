@@ -2,24 +2,23 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, query, getDocs } from 'firebase/firestore';
-import { db } from '@/firebase/index';
 import { Loader2, Lock, PlayCircle, ShoppingCart, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Test } from '@/lib/types';
+import { Test, TestWithQuestions } from '@/lib/types';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { DataSeeder } from '@/components/debug/data-seeder';
+import { getMockTests } from '@/lib/mock-data';
 
 
 export default function TestsPage() {
-  const [tests, setTests] = useState<Test[]>([]);
+  const [tests, setTests] = useState<TestWithQuestions[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchasedBundles, setPurchasedBundles] = useState<string[]>(['demo_exam']); // Mock user purchases
   const router = useRouter();
@@ -28,13 +27,11 @@ export default function TestsPage() {
   useEffect(() => {
     const fetchTests = async () => {
       try {
-        const q = query(collection(db, 'tests')); // Fetch ALL tests
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Test));
-        console.log("Fetched Tests:", data); // DETAILED LOGGING
+        const data = await getMockTests();
+        console.log("Fetched Mock Tests:", data); // DETAILED LOGGING
         setTests(data);
       } catch (error) {
-        console.error("Error fetching tests:", error);
+        console.error("Error fetching mock tests:", error);
       } finally {
         setLoading(false);
       }
@@ -55,9 +52,12 @@ export default function TestsPage() {
         tests: { full: [], subject: [], topic: [] }
       };
     }
+    
+    // Fallback for tests without a specific subtype
+    const effectiveSubType = test.testSubType || 'full';
 
-    if (subType === 'full') acc[category][examName].tests.full.push(test);
-    else if (subType === 'subject') acc[category][examName].tests.subject.push(test);
+    if (effectiveSubType === 'full') acc[category][examName].tests.full.push(test);
+    else if (effectiveSubType === 'subject') acc[category][examName].tests.subject.push(test);
     else acc[category][examName].tests.topic.push(test);
 
     return acc;
@@ -200,3 +200,5 @@ function TestSection({ title, tests, isUnlocked, router }: { title: string; test
     </div>
   );
 }
+
+    

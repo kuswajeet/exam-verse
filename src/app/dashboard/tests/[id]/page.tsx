@@ -1,11 +1,10 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase/provider';
-import type { Test, Question, TestWithQuestions } from '@/lib/types';
+import { getMockTestById } from '@/lib/mock-data';
+import type { TestWithQuestions } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -18,53 +17,11 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
-// Helper function to fetch test and its questions, handling Firestore's 'in' query limit
-async function getTestWithQuestions(firestore: any, testId: string): Promise<TestWithQuestions | null> {
-    const testRef = doc(firestore, 'tests', testId);
-    const testSnapshot = await getDoc(testRef);
-    
-    if (!testSnapshot.exists()) {
-        return null;
-    }
-
-    const testData = { id: testSnapshot.id, ...testSnapshot.data() } as Test;
-    
-    if (!testData.questionIds || testData.questionIds.length === 0) {
-        return { ...testData, questions: [] };
-    }
-    
-    // Firestore 'in' queries are limited to 30 elements. We need to chunk requests.
-    const questionChunks: string[][] = [];
-    for (let i = 0; i < testData.questionIds.length; i += 30) {
-        questionChunks.push(testData.questionIds.slice(i, i + 30));
-    }
-    
-    const questionPromises = questionChunks.map(chunk => 
-        getDocs(query(collection(firestore, 'questions'), where('__name__', 'in', chunk)))
-    );
-
-    const questionSnapshots = await Promise.all(questionPromises);
-
-    const questionsMap = new Map<string, Question>();
-    questionSnapshots.forEach(snapshot => {
-        snapshot.docs.forEach(doc => {
-            questionsMap.set(doc.id, { id: doc.id, ...doc.data() } as Question);
-        });
-    });
-
-    // Ensure question order is preserved from the test document
-    const questions = testData.questionIds.map(id => questionsMap.get(id)).filter((q): q is Question => !!q);
-    
-    return { ...testData, questions };
-}
-
 
 export default function TestPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const firestore = useFirestore();
-  const { user } = useUser();
   const { toast } = useToast();
-  const testId = params.id;
+  const { id: testId } = params;
 
   const [test, setTest] = useState<TestWithQuestions | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,31 +31,28 @@ export default function TestPage({ params }: { params: { id: string } }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!firestore || !testId) return;
+    if (!testId) return;
 
     async function fetchTest() {
-      console.log('Start Fetching Test:', testId);
       try {
         setIsLoading(true);
-        const testData = await getTestWithQuestions(firestore, testId);
+        const testData = await getMockTestById(testId);
         if (testData) {
-          console.log('Test Data Found:', testData);
           setTest(testData);
           setTimeLeft(testData.durationMinutes * 60);
         } else {
-            toast({ variant: 'destructive', title: 'Error', description: 'Test not found.' });
-            console.log('Error: Test not found for ID:', testId);
+            toast({ variant: 'destructive', title: 'Error', description: 'Mock test not found.' });
         }
       } catch (error) {
-        console.error('Error fetching test:', error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to load the test.' });
+        console.error('Error fetching mock test:', error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to load the mock test.' });
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchTest();
-  }, [firestore, testId, toast]);
+  }, [testId, toast]);
 
   // Timer effect
   useEffect(() => {
@@ -121,7 +75,7 @@ export default function TestPage({ params }: { params: { id: string } }) {
   };
 
   const handleSubmit = async () => {
-    if (!test || !user || isSubmitting) return;
+    if (!test || isSubmitting) return;
     setIsSubmitting(true);
     
     let score = 0;
@@ -131,40 +85,10 @@ export default function TestPage({ params }: { params: { id: string } }) {
       }
     }
     
-    try {
-        const resultsCollection = collection(firestore, 'results');
-        const docRef = await addDoc(resultsCollection, {
-            userId: user.uid,
-            studentName: user.displayName || 'Anonymous Student',
-            testId: test.id,
-            testTitle: test.title,
-            testType: test.testType || 'exam',
-            category: test.category,
-            examName: test.examName,
-            answers: selectedAnswers,
-            score: score,
-            totalQuestions: test.questions.length,
-            accuracy: (score / test.questions.length) * 100,
-            completedAt: serverTimestamp(),
-        });
-
-        toast({
-            title: 'Test Submitted!',
-            description: 'Your results have been saved.',
-            className: 'bg-green-100 dark:bg-green-900'
-        });
-
-        router.push(`/dashboard/results/${docRef.id}`);
-
-    } catch (error) {
-        console.error("Error submitting test results: ", error);
-        toast({
-            variant: 'destructive',
-            title: 'Submission Error',
-            description: 'Could not save your test results.'
-        });
-        setIsSubmitting(false);
-    }
+    // Mock Submission
+    alert(`Test Submitted! Your score: ${score}/${test.questions.length}. Redirecting to results...`);
+    setIsSubmitting(false);
+    router.push(`/dashboard/results`);
   };
 
   if (isLoading) {
@@ -216,7 +140,6 @@ export default function TestPage({ params }: { params: { id: string } }) {
     return <div className="text-center py-10">Test not found or could not be loaded.</div>;
   }
 
-  // Safety check for questions
   if (!test.questions || !Array.isArray(test.questions) || test.questions.length === 0) {
       return (
           <div className="flex flex-col items-center justify-center h-full text-center">
@@ -335,5 +258,4 @@ export default function TestPage({ params }: { params: { id: string } }) {
     </div>
   );
 }
-
     
