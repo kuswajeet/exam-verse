@@ -1,9 +1,9 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-// import { getStorage } from "firebase/storage"; // Uncomment if you use storage
 
 const firebaseConfig = {
+  // The "||" operator provides a backup value so the build doesn't crash
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "mock_key_for_build",
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "mock_domain",
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "mock_project",
@@ -18,6 +18,4 @@ const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 const auth = getAuth(app);
 const db = getFirestore(app);
-// const storage = getStorage(app); // Uncomment if needed
-
 export { auth, db, app };
