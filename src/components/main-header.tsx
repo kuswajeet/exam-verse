@@ -22,7 +22,7 @@ export function MainHeader() {
     <header className="px-4 lg:px-6 h-16 flex items-center bg-card border-b sticky top-0 z-50">
       <Link href="/" className="flex items-center justify-center gap-2" prefetch={false}>
         <AppLogo className="h-6 w-6 text-primary" />
-        <span className="text-xl font-semibold">Verse Exam Prep</span>
+        <span className="text-xl font-semibold">Exam Verse</span>
       </Link>
       <nav className="ml-auto flex gap-2 sm:gap-4">
         <Button asChild variant="ghost">

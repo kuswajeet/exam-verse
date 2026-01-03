@@ -92,7 +92,7 @@ export function DashboardHeader() {
               className="flex items-center gap-2 text-lg font-semibold"
             >
               <Package2 className="h-6 w-6" />
-              <span className="sr-only">Verse Exam Prep</span>
+              <span className="sr-only">Exam Verse</span>
             </Link>
              {navLinks.map(link => (
               <Link key={link.name} href={link.href} className="text-muted-foreground hover:text-foreground">
