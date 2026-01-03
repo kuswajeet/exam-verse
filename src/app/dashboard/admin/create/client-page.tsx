@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -11,8 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { PlusCircle, Trash2, Loader } from 'lucide-react';
-import { useFirestore } from '@/firebase';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -59,63 +56,28 @@ export function CreateTestManualClientPage() {
     name: 'questions',
   });
 
-  const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function onSubmit(values: z.infer<typeof testSchema>) {
-    if (!firestore) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available.' });
-      return;
-    }
     setIsSubmitting(true);
-
-    try {
-      // 1. Save all questions and get their IDs
-      const questionDocs: Omit<Question, 'id'>[] = values.questions.map(q => ({
-        ...q,
-        category: values.category,
-        examName: values.examName,
-        subject: values.subject,
-        questionType: 'single_choice',
-      }));
-
-      const questionIds: string[] = [];
-      for (const qData of questionDocs) {
-        const qRef = await addDoc(collection(firestore, 'questions'), qData);
-        questionIds.push(qRef.id);
-      }
-
-      // 2. Create the test document with question IDs
-      const testData: Omit<Test, 'id'> = {
-        title: values.title,
-        durationMinutes: values.durationMinutes,
-        category: values.category,
-        examName: values.examName,
-        subject: values.subject,
-        questionIds: questionIds,
-        questionCount: questionIds.length,
-        totalMarks: questionIds.length,
-        isFree: true, // Defaulting to free, can be changed later
-        price: 0,
-        isPublished: true,
-        createdAt: serverTimestamp(),
-        testType: 'exam', // Defaulting
-        testSubType: 'full', // Defaulting
-      };
+    
+    // Simulate network delay
+    setTimeout(() => {
+      console.log("Mock Test Data:", values);
+      alert("Test Created Successfully! (Mock)");
       
-      await addDoc(collection(firestore, 'tests'), testData);
+      toast({ 
+        title: 'Success! (Mock)', 
+        description: 'Test has been created locally.',
+        className: 'bg-green-100 dark:bg-green-900'
+      });
       
-      toast({ title: 'Success!', description: 'Test and questions published successfully.', className: 'bg-green-100 dark:bg-green-900'});
+      setIsSubmitting(false);
       router.push('/dashboard/tests');
 
-    } catch (error) {
-      console.error('Error creating test:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not create test.' });
-    } finally {
-      setIsSubmitting(false);
-    }
+    }, 1000);
   }
 
   const addNewQuestion = () => {
