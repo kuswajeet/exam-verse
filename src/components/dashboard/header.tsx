@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -92,7 +93,7 @@ export function DashboardHeader() {
               className="flex items-center gap-2 text-lg font-semibold"
             >
               <Package2 className="h-6 w-6" />
-              <span className="sr-only">Exam Verse</span>
+              <span className="">Exam Verse</span>
             </Link>
              {navLinks.map(link => (
               <Link key={link.name} href={link.href} className="text-muted-foreground hover:text-foreground">
