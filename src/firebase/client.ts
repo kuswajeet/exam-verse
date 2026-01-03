@@ -7,7 +7,7 @@ import { getFirestore } from "firebase/firestore";
 
 // HARDCODED CONFIGURATION (To fix invalid-api-key error)
 const firebaseConfig = {
-    apiKey: "AIzaSyAa9Q9ugfETMSFnVX99sBcs1i25KEurzIk", // User will paste real API Key here
+    apiKey: "AIzaSyAa9Q9ugfETMSFnVX99sBcs1i25KEurzIk",
     authDomain: "verse-exam-prep.firebaseapp.com",
     projectId: "verse-exam-prep",
     storageBucket: "verse-exam-prep.appspot.com",
