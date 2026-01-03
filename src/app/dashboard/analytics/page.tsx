@@ -18,38 +18,34 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider";
-import { useCollection } from "@/firebase/firestore/use-collection";
-import { collection, query, where, orderBy } from "firebase/firestore";
 import type { TestAttempt } from "@/lib/types";
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from "date-fns";
 import { TrendingUp, Target, Star, BookOpen } from 'lucide-react';
+import { Timestamp } from 'firebase/firestore';
+
+
+// --- MOCK DATA SECTION ---
+const MOCK_ATTEMPTS: TestAttempt[] = [
+    { id: 'a1', testId: 't1', testTitle: 'Science Basics', score: 4, totalQuestions: 5, accuracy: 80, completedAt: { seconds: new Date('2024-07-01').getTime()/1000, nanoseconds: 0 } as Timestamp, userId: 'u1', category: 'Science', examName: 'Mock Exam', answers: {} },
+    { id: 'a2', testId: 't2', testTitle: 'History Fundamentals', score: 6, totalQuestions: 10, accuracy: 60, completedAt: { seconds: new Date('2024-07-05').getTime()/1000, nanoseconds: 0 } as Timestamp, userId: 'u1', category: 'History', examName: 'Mock Exam', answers: {} },
+    { id: 'a3', testId: 't3', testTitle: 'Algebra I', score: 9, totalQuestions: 10, accuracy: 90, completedAt: { seconds: new Date('2024-07-10').getTime()/1000, nanoseconds: 0 } as Timestamp, userId: 'u1', category: 'Math', examName: 'Mock Exam', answers: {} },
+    { id: 'a4', testId: 't4', testTitle: 'Advanced Physics', score: 7, totalQuestions: 15, accuracy: 46.7, completedAt: { seconds: new Date('2024-07-15').getTime()/1000, nanoseconds: 0 } as Timestamp, userId: 'u1', category: 'Science', examName: 'Mock Exam', answers: {} },
+    { id: 'a5', testId: 't5', testTitle: 'Biology Review', score: 14, totalQuestions: 15, accuracy: 93.3, completedAt: { seconds: new Date('2024-07-20').getTime()/1000, nanoseconds: 0 } as Timestamp, userId: 'u1', category: 'Science', examName: 'Mock Exam', answers: {} },
+];
+// --- END MOCK DATA SECTION ---
+
 
 export default function AnalyticsPage() {
-  const { user } = useUser();
-  const firestore = useFirestore();
-
-  const resultsQuery = useMemoFirebase(
-    () => (user && firestore 
-        ? query(
-            collection(firestore, "results"), 
-            where('userId', '==', user.uid)
-          ) 
-        : null),
-    [user, firestore]
-  );
-  
-  const { data: attempts, isLoading: isLoadingAttempts } = useCollection<TestAttempt>(resultsQuery);
 
   const sortedAttempts = useMemo(() => {
-    if (!attempts) return [];
-    return [...attempts].sort((a, b) => {
+    if (!MOCK_ATTEMPTS) return [];
+    return [...MOCK_ATTEMPTS].sort((a, b) => {
       const timeA = a.completedAt?.seconds || 0;
       const timeB = b.completedAt?.seconds || 0;
       return timeA - timeB; // Sort oldest to newest for chart progression
     });
-  }, [attempts]);
+  }, []);
 
   const stats = useMemo(() => {
     if (!sortedAttempts || sortedAttempts.length === 0) {
@@ -71,34 +67,13 @@ export default function AnalyticsPage() {
   const chartData = useMemo(() => {
     return sortedAttempts.map((attempt, index) => ({
       name: `Test ${index + 1}`,
-      date: format(new Date(attempt.completedAt.seconds * 1000), "PP"),
+      date: attempt.completedAt ? format(new Date(attempt.completedAt.seconds * 1000), "PP") : "N/A",
       testTitle: attempt.testTitle,
       accuracy: attempt.accuracy ? parseFloat(attempt.accuracy.toFixed(1)) : 0,
     }));
   }, [sortedAttempts]);
 
-  if (isLoadingAttempts) {
-    return (
-        <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Skeleton className="h-28 w-full" />
-                <Skeleton className="h-28 w-full" />
-                <Skeleton className="h-28 w-full" />
-            </div>
-            <Card>
-                <CardHeader>
-                    <Skeleton className="h-7 w-48" />
-                    <Skeleton className="h-4 w-64" />
-                </CardHeader>
-                <CardContent>
-                    <Skeleton className="h-[350px] w-full" />
-                </CardContent>
-            </Card>
-        </div>
-    );
-  }
-
-  if (!attempts || attempts.length < 2) {
+  if (!MOCK_ATTEMPTS || MOCK_ATTEMPTS.length < 2) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center p-12 text-center">
