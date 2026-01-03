@@ -61,8 +61,8 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error("Login Error:", error);
       let msg = "Failed to sign in.";
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
-        msg = "Invalid email or password.";
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-api-key') {
+        msg = "Invalid email, password, or API Key. Please check your credentials and Firebase config.";
       } else if (error.message) {
         msg = error.message;
       }
