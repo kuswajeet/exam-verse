@@ -3,8 +3,6 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/firebase/index'; 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { 
@@ -29,13 +27,10 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      localStorage.removeItem('isPro'); // Clear session/subscription status
-      router.push('/'); // Redirect to the homepage
-    } catch (error) {
-      console.error("Logout failed", error);
+  const handleLogout = () => {
+    if (confirm("Are you sure you want to log out?")) {
+      localStorage.removeItem("isPro");
+      router.push("/");
     }
   };
 

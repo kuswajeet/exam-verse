@@ -36,21 +36,16 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useUser } from "@/firebase/provider";
 import { Skeleton } from "../ui/skeleton";
-import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { auth } from "@/firebase";
 
 export function DashboardHeader() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      localStorage.removeItem('isPro'); // Clear session/subscription status
-      router.push('/'); // Redirect to the homepage
-    } catch (error) {
-      console.error("Error signing out: ", error);
+  const handleLogout = () => {
+    if (confirm("Are you sure you want to log out?")) {
+      localStorage.removeItem("isPro");
+      router.push("/");
     }
   };
 
