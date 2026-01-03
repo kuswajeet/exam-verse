@@ -17,12 +17,11 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
-
-export default function TestPage({ params }: { params: { id: string } }) {
+export default function TestPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const { id: testId } = React.use(paramsPromise);
   const router = useRouter();
   const { toast } = useToast();
-  const { id: testId } = params;
-
+  
   const [test, setTest] = useState<TestWithQuestions | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -85,10 +84,29 @@ export default function TestPage({ params }: { params: { id: string } }) {
       }
     }
     
-    // Mock Submission
-    alert(`Test Submitted! Your score: ${score}/${test.questions.length}. Redirecting to results...`);
-    setIsSubmitting(false);
-    router.push(`/dashboard/results`);
+    // Mock Submission: Save to localStorage
+    const resultId = `result-${test.id}-${Date.now()}`;
+    const resultData = {
+      id: resultId,
+      userId: 'mock-user-1',
+      testId: test.id,
+      testTitle: test.title,
+      answers: selectedAnswers,
+      score: score,
+      totalQuestions: test.questions.length,
+      accuracy: (score / test.questions.length) * 100,
+      completedAt: new Date().toISOString(),
+    };
+    
+    localStorage.setItem('latestTestResult', JSON.stringify(resultData));
+    
+    toast({ title: "Test Submitted!", description: `Your score: ${score}/${test.questions.length}. Redirecting...` });
+    
+    // Wait a bit for the toast to be seen
+    setTimeout(() => {
+        setIsSubmitting(false);
+        router.push(`/dashboard/results`);
+    }, 1500);
   };
 
   if (isLoading) {
@@ -258,4 +276,5 @@ export default function TestPage({ params }: { params: { id: string } }) {
     </div>
   );
 }
+
     
