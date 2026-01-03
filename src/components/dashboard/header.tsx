@@ -47,7 +47,8 @@ export function DashboardHeader() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      router.push('/login');
+      localStorage.removeItem('isPro'); // Clear session/subscription status
+      router.push('/'); // Redirect to the homepage
     } catch (error) {
       console.error("Error signing out: ", error);
     }
