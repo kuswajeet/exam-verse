@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -55,12 +55,12 @@ async function getTestWithQuestions(firestore: any, testId: string): Promise<Tes
     return { ...testData, questions };
 }
 
-export default function ResultDetailPage(props: { params: Promise<{ id: string }> }) {
-  const { id } = use(props.params);
+export default function ResultDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const { user } = useUser();
   const firestore = useFirestore();
-  const [test, setTest] = React.useState<TestWithQuestions | null>(null);
-  const [isLoadingTest, setIsLoadingTest] = React.useState(true);
+  const [test, setTest] = useState<TestWithQuestions | null>(null);
+  const [isLoadingTest, setIsLoadingTest] = useState(true);
 
   const resultDocRef = useMemoFirebase(
     () => (firestore ? doc(firestore, `results`, id) : null),
@@ -69,7 +69,7 @@ export default function ResultDetailPage(props: { params: Promise<{ id: string }
   
   const { data: attempt, isLoading: isLoadingAttempt } = useDoc<TestAttempt>(resultDocRef);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!firestore || !attempt?.testId) return;
     
     const fetchTest = async () => {
@@ -119,7 +119,7 @@ export default function ResultDetailPage(props: { params: Promise<{ id: string }
      return <p className="text-center text-muted-foreground">Could not load the questions for this test result.</p>;
   }
 
-  const accuracy = (attempt.score / attempt.totalQuestions) * 100;
+  const accuracy = attempt.accuracy || (attempt.score / attempt.totalQuestions) * 100;
   const questionsAnswered = Object.keys(attempt.answers).length;
   const wrongAnswers = questionsAnswered - attempt.score;
   const skippedAnswers = attempt.totalQuestions - questionsAnswered;
