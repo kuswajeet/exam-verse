@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -16,7 +17,7 @@ const sampleQuestions: Omit<Question, 'id'>[] = [
         correctAnswerIndex: 1,
         explanation: 'H2O represents two hydrogen atoms and one oxygen atom, which is the composition of a water molecule.',
         category: 'Science',
-        examName: 'General Science',
+        examName: 'General Science Repair Test',
         subject: 'Chemistry',
         topic: 'Basic Chemistry',
         difficulty: 'easy',
@@ -28,7 +29,7 @@ const sampleQuestions: Omit<Question, 'id'>[] = [
         correctAnswerIndex: 1,
         explanation: 'Mars is often referred to as the "Red Planet" because the iron oxide prevalent on its surface gives it a reddish appearance.',
         category: 'Science',
-        examName: 'General Science',
+        examName: 'General Science Repair Test',
         subject: 'Astronomy',
         topic: 'Solar System',
         difficulty: 'easy',
@@ -40,7 +41,7 @@ const sampleQuestions: Omit<Question, 'id'>[] = [
         correctAnswerIndex: 2,
         explanation: 'Mitochondria are responsible for generating most of the cell\'s supply of adenosine triphosphate (ATP), used as a source of chemical energy.',
         category: 'Science',
-        examName: 'General Science',
+        examName: 'General Science Repair Test',
         subject: 'Biology',
         topic: 'Cell Biology',
         difficulty: 'medium',
@@ -52,7 +53,7 @@ export function DataSeeder() {
   const { toast } = useToast();
   const [isSeeding, setIsSeeding] = useState(false);
 
-  const handleSeedData = async () => {
+  const repairDatabase = async () => {
     if (!db) {
       toast({ variant: 'destructive', title: 'Error', description: 'Firestore not available.' });
       return;
@@ -64,23 +65,23 @@ export function DataSeeder() {
       const questionsCollection = collection(db, 'questions');
       const testsCollection = collection(db, 'tests');
 
-      // 1. Create new question documents and collect their IDs
+      // 1. Create 3 new Question documents and capture their real IDs
       const questionIds: string[] = [];
       sampleQuestions.forEach((qData) => {
-        const questionRef = doc(questionsCollection); // Create a new doc with a random ID
-        batch.set(questionRef, { ...qData, id: questionRef.id }); // Add the ID to the doc data
-        questionIds.push(questionRef.id);
+        const questionRef = doc(questionsCollection); // Create a new doc reference with a random ID
+        batch.set(questionRef, { ...qData, id: questionRef.id }); // Add the ID to the doc data itself
+        questionIds.push(questionRef.id); // Capture the real ID
       });
 
-      // 2. Create the test document
-      const testRef = doc(testsCollection, 'sample-science-mock-1');
+      // 2. Create the new Test document using the captured IDs
+      const testRef = doc(testsCollection); // Create a new test doc reference
       const testData: Omit<Test, 'id'> = {
-        title: 'General Science Mock 1',
-        durationMinutes: 30,
+        title: 'General Science Repair Test',
+        examName: 'General Science Repair Test', // Set examName
+        durationMinutes: 45, // Set duration
         category: 'Science',
-        examName: 'General Science',
         subject: 'Mixed',
-        questionIds: questionIds,
+        questionIds: questionIds, // Use the real, captured IDs
         questionCount: questionIds.length,
         totalMarks: questionIds.length,
         isFree: true,
@@ -91,19 +92,19 @@ export function DataSeeder() {
       };
       batch.set(testRef, testData);
 
-      // 3. Commit the batch
+      // 3. Commit all writes at once
       await batch.commit();
 
       toast({
-        title: 'Success!',
-        description: 'Sample test and 3 questions have been injected into the database.',
+        title: 'Database Repaired!',
+        description: 'A valid test with 3 correctly linked questions has been generated.',
         className: 'bg-green-100 dark:bg-green-900',
       });
     } catch (error) {
-      console.error('Error seeding data:', error);
+      console.error('Error repairing data:', error);
       toast({
         variant: 'destructive',
-        title: 'Seeding Failed',
+        title: 'Repair Failed',
         description: error instanceof Error ? error.message : 'An unknown error occurred.',
       });
     } finally {
@@ -118,18 +119,18 @@ export function DataSeeder() {
           <Zap /> Developer Tool: Data Seeder
         </CardTitle>
         <CardDescription>
-          If your database is empty, click this button to inject a sample test and questions. This will fix empty or loading pages.
+          If your data has broken links or is empty, click this button to generate a new, perfectly valid test with linked questions.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Button onClick={handleSeedData} disabled={isSeeding} variant="default" className="bg-amber-600 hover:bg-amber-700 text-white">
+        <Button onClick={repairDatabase} disabled={isSeeding} variant="default" className="bg-amber-600 hover:bg-amber-700 text-white">
           {isSeeding ? (
             <>
               <Loader className="mr-2 h-4 w-4 animate-spin" />
-              Injecting...
+              Repairing...
             </>
           ) : (
-            'Inject Sample Test Data'
+            'Repair & Generate Valid Test'
           )}
         </Button>
       </CardContent>
