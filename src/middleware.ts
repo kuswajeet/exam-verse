@@ -1,23 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const session = request.cookies.get('session')?.value;
-  const isAuthPage =
-    request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/signup');
-  const isDashboard = request.nextUrl.pathname.startsWith('/dashboard');
+  const path = request.nextUrl.pathname;
 
-  if (isAuthPage && session) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  // 1. THE BACK BUTTON FIX:
+  // If we are at the root "/", just let it load. 
+  // Do NOT force a redirect to /dashboard here. 
+  // This allows the "Back" button to land safely on the home page.
+  if (path === '/') {
+    return NextResponse.next();
   }
 
-  if (isDashboard && !session) {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
+  // 2. PROTECTED ROUTES (Client-Side Handled)
+  // We let the browser load these pages. 
+  // Your existing "useAuth" hook in the components will handle the security.
+  // This prevents the "Middleware Block" issue.
   return NextResponse.next();
 }
 
+// Only run on these paths
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/signup'],
+  matcher: [
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
 };
