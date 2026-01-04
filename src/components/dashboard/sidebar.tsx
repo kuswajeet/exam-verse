@@ -1,14 +1,13 @@
 
 'use client';
-
-import { auth } from '@/firebase/config';
-import { signOut } from 'firebase/auth';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { useFirebase } from '@/firebase/provider';
-
+import { auth } from '@/firebase/config'; // <--- DIRECT IMPORT (Crucial)
+import { signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
+import { useFirebase } from '@/firebase/provider';
 import { 
   BookOpen, 
   BarChart, 
@@ -38,24 +37,23 @@ export function DashboardSidebar() {
     'Exam Verse Member';
 
   const handleLogout = async () => {
-    // 1. Ask for confirmation
-    if (!confirm("Are you sure you want to log out?")) return;
+  // 1. Ask for confirmation
+  if (!confirm("Are you sure you want to log out?")) return;
 
-    try {
-      // 2. Clear Local Storage (Pro status, etc)
-      localStorage.clear();
-      
-      // 3. Sign out of Firebase
-      await signOut(auth);
-      
-      // 4. Force hard reload to the home page to clear all states
-      window.location.href = "/"; 
-    } catch (error) {
-      console.error("Logout Error:", error);
-      // Fallback redirect if error
-      window.location.href = "/";
-    }
-    };
+  try {
+    // 2. Clear Local Storage
+    localStorage.clear();
+
+    // 3. Sign out of Firebase directly
+    await signOut(auth);
+
+    // 4. FORCE REFRESH to Home Page (Nuclear Option)
+    window.location.href = "/";
+  } catch (error) {
+    console.error("Logout Error:", error);
+    window.location.href = "/"; // Force exit even if error
+  }
+};
 
   const menuGroups = [
     {

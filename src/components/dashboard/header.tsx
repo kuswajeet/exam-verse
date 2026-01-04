@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from "next/link";
@@ -34,21 +33,34 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useRouter } from "next/navigation";
 
-// Mock user data to prevent Firebase network calls
-const user = { 
-  name: "Satoshi N.", 
-  email: "satoshi@example.com",
-};
-
+// --- CRITICAL FIX: Import Firebase Auth ---
+import { auth } from "@/firebase/config"; // Direct import from your config
+import { signOut } from "firebase/auth";
+import { useFirebase } from "@/firebase/provider"; // Optional: to get real user name
 
 export function DashboardHeader() {
   const router = useRouter();
+  
+  // Optional: Get real user data instead of Mock data
+  const { user: firebaseUser } = useFirebase();
+  const displayName = firebaseUser?.displayName || firebaseUser?.email || "Account";
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (confirm("Are you sure you want to log out?")) {
-      // Client-side logout: clear mock session and redirect
-      localStorage.removeItem("isPro");
-      router.push("/");
+      try {
+        // 1. Clear Local Storage
+        localStorage.clear();
+        
+        // 2. REAL FIREBASE LOGOUT
+        await signOut(auth);
+
+        // 3. FORCE EXIT (Hard Refresh to Landing Page)
+        window.location.href = "/";
+      } catch (error) {
+        console.error("Logout failed:", error);
+        // Force exit even if error
+        window.location.href = "/";
+      }
     }
   };
 
@@ -145,7 +157,7 @@ export function DashboardHeader() {
           </DropdownMenuItem>
           <DropdownMenuItem>Support</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout} className="text-red-500 focus:text-red-500">
+          <DropdownMenuItem onClick={handleLogout} className="text-red-500 focus:text-red-500 cursor-pointer">
             <LogOut className="mr-2 h-4 w-4"/>
             <span>Logout</span>
           </DropdownMenuItem>
