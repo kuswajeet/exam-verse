@@ -2,6 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+/* --- NATIVE APP POLISH --- */
+html, body {
+  /* Prevent "Pull-to-Refresh" rubber-banding on the whole app */
+  overscroll-behavior-y: none;
+  
+  /* Disable text selection (makes it feel like an app, not a website) */
+  -webkit-user-select: none;
+  user-select: none;
+  
+  /* Remove the blue highlight when tapping buttons on Android */
+  -webkit-tap-highlight-color: transparent;
+  
+  /* Smoother scrolling */
+  scroll-behavior: smooth;
+}
+
+/* Allow text selection only in input fields so users can type */
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 @layer base {
   :root {
     --background: 234 67% 94%;

@@ -1,3 +1,4 @@
+'use client';
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -5,8 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, BarChart, BookCopy, Zap } from "lucide-react";
 import Image from "next/image";
 import { MainHeader } from "@/components/main-header";
+import { useFirebase } from "@/firebase/provider"; // Import Firebase Hook
 
 export default function LandingPage() {
+  // Check if user is logged in
+  const { user } = useFirebase();
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <MainHeader />
@@ -21,15 +26,25 @@ export default function LandingPage() {
                     Master Your Exams with Exam Verse
                   </h1>
                   <p className="max-w-[600px] text-muted-foreground md:text-xl">
-                    Our AI-powered platform provides you with personalized mock tests, real-time analytics, and expert content to help you ace your exams.
+                    Our AI-powered platform provides you with personalized mock tests, real-time analytics, and expert content.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button asChild size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                    <Link href="/signup">
-                      Start Practicing for Free
-                    </Link>
-                  </Button>
+                  {user ? (
+                     /* If Logged In: Show Dashboard Button */
+                    <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                      <Link href="/dashboard">
+                        Go to Dashboard
+                      </Link>
+                    </Button>
+                  ) : (
+                     /* If Logged Out: Show Signup Button */
+                    <Button asChild size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                      <Link href="/signup">
+                        Start Practicing for Free
+                      </Link>
+                    </Button>
+                  )}
                 </div>
               </div>
                <Image
@@ -37,7 +52,6 @@ export default function LandingPage() {
                   width="600"
                   height="400"
                   alt="A student studying with focus"
-                  data-ai-hint="student studying"
                   className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
                 />
             </div>

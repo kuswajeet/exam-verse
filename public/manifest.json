@@ -1,7 +1,7 @@
 {
   "name": "Exam Verse",
   "short_name": "ExamVerse",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4F46E5",
