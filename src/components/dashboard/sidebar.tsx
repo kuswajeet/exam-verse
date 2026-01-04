@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useFirebase } from '@/firebase/provider';
+import { auth } from '@/firebase/config';
 import { signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { 
@@ -28,8 +29,8 @@ import {
 export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { auth, user } = useFirebase();
-  const firebaseUser = auth?.currentUser ?? user;
+  const { user } = useFirebase();
+  const firebaseUser = auth.currentUser ?? user;
   const displayName =
     firebaseUser?.displayName?.trim() ||
     firebaseUser?.email?.split('@')[0] ||
@@ -40,12 +41,10 @@ export function DashboardSidebar() {
       return;
     }
     localStorage.removeItem("isPro");
-    if (auth) {
-      try {
-        await signOut(auth);
-      } catch (error) {
-        console.error("Failed to sign out via Firebase:", error);
-      }
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Failed to sign out via Firebase:", error);
     }
     router.push("/");
   };
@@ -84,7 +83,7 @@ export function DashboardSidebar() {
   ];
 
   return (
-    <div className="hidden border-r bg-card md:block">
+    <div className="hidden md:block border-r bg-card">
       <div className="flex h-full max-h-screen flex-col gap-2">
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
           <Link href="/" className="flex items-center gap-2 font-semibold">
