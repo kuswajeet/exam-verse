@@ -33,34 +33,34 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useRouter } from "next/navigation";
 
-// --- CRITICAL FIX: Import Firebase Auth ---
-import { auth } from "@/firebase/config"; // Direct import from your config
+// --- CRITICAL FIX: Import Real Firebase Auth ---
+import { auth } from "@/firebase/config"; 
 import { signOut } from "firebase/auth";
-import { useFirebase } from "@/firebase/provider"; // Optional: to get real user name
+import { useFirebase } from "@/firebase/provider";
 
 export function DashboardHeader() {
   const router = useRouter();
   
-  // Optional: Get real user data instead of Mock data
+  // Get real user data
   const { user: firebaseUser } = useFirebase();
-  const displayName = firebaseUser?.displayName || firebaseUser?.email || "Account";
 
+  // --- THE FIXED LOGOUT FUNCTION ---
   const handleLogout = async () => {
-    if (confirm("Are you sure you want to log out?")) {
-      try {
-        // 1. Clear Local Storage
-        localStorage.clear();
-        
-        // 2. REAL FIREBASE LOGOUT
-        await signOut(auth);
+    // 1. Confirm (Optional - you can remove this if you want instant logout)
+    if (!confirm("Are you sure you want to log out?")) return;
 
-        // 3. FORCE EXIT (Hard Refresh to Landing Page)
-        window.location.href = "/";
-      } catch (error) {
-        console.error("Logout failed:", error);
-        // Force exit even if error
-        window.location.href = "/";
-      }
+    try {
+      // 2. Clear Local Storage
+      localStorage.clear();
+      
+      // 3. REAL FIREBASE LOGOUT (This was missing!)
+      await signOut(auth);
+
+      // 4. Force Hard Refresh to Landing Page
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Logout failed:", error);
+      window.location.href = "/"; // Force exit even if error
     }
   };
 
@@ -97,7 +97,7 @@ export function DashboardHeader() {
             <span className="sr-only">Toggle navigation menu</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="flex flex-col">
+        <SheetContent side="left" className="flex flex-col overflow-y-auto">
           <nav className="grid gap-6 text-lg font-medium">
             <Link
               href="/"
@@ -157,10 +157,13 @@ export function DashboardHeader() {
           </DropdownMenuItem>
           <DropdownMenuItem>Support</DropdownMenuItem>
           <DropdownMenuSeparator />
+          
+          {/* THE LOGOUT BUTTON */}
           <DropdownMenuItem onClick={handleLogout} className="text-red-500 focus:text-red-500 cursor-pointer">
             <LogOut className="mr-2 h-4 w-4"/>
             <span>Logout</span>
           </DropdownMenuItem>
+
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
